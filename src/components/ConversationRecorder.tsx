@@ -82,10 +82,11 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     if (isRecording) {
       stopRecording();
     }
-    // 약간의 딜레이 후에 종료 처리
+    
+    // 녹음 정리 시간을 충분히 준 후 종료 처리
     setTimeout(() => {
       onEndRecording(messages);
-    }, 100);
+    }, 500);
   };
 
   // 스크롤 자동 이동
