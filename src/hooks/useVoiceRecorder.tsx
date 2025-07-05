@@ -3,12 +3,11 @@ import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UseVoiceRecorderProps {
-  onTranscription: (text: string, speaker: 'doctor' | 'patient') => void;
+  onTranscription: (text: string) => void;
   onError: (error: string) => void;
-  currentSpeaker: 'doctor' | 'patient';
 }
 
-export const useVoiceRecorder = ({ onTranscription, onError, currentSpeaker }: UseVoiceRecorderProps) => {
+export const useVoiceRecorder = ({ onTranscription, onError }: UseVoiceRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -52,7 +51,7 @@ export const useVoiceRecorder = ({ onTranscription, onError, currentSpeaker }: U
       console.error('Error starting recording:', error);
       onError('마이크 접근 권한이 필요합니다.');
     }
-  }, [onTranscription, onError, currentSpeaker]);
+  }, [onTranscription, onError]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -82,8 +81,7 @@ export const useVoiceRecorder = ({ onTranscription, onError, currentSpeaker }: U
       console.log('Voice-to-text result:', data);
       
       if (data?.text && data.text.trim()) {
-        // 현재 선택된 화자 사용
-        onTranscription(data.text.trim(), currentSpeaker);
+        onTranscription(data.text.trim());
       }
     } catch (error) {
       console.error('Error processing audio:', error);

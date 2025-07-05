@@ -4,13 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mic, MicOff, Square, User, UserRound, Loader2 } from "lucide-react";
+import { Mic, MicOff, Square, User, Loader2 } from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
-  speaker: 'doctor' | 'patient';
   content: string;
   timestamp: Date;
 }
@@ -22,25 +21,24 @@ interface ConversationRecorderProps {
 
 export default function ConversationRecorder({ patientInfo, onEndRecording }: ConversationRecorderProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentSpeaker, setCurrentSpeaker] = useState<'doctor' | 'patient'>('doctor');
+  const [conversationStarted, setConversationStarted] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const addMessage = (speaker: 'doctor' | 'patient', content: string) => {
+  const addMessage = (content: string) => {
     const newMessage: Message = {
       id: Date.now().toString(),
-      speaker,
       content,
       timestamp: new Date()
     };
     setMessages(prev => [...prev, newMessage]);
   };
 
-  const handleTranscription = (text: string, speaker: 'doctor' | 'patient') => {
-    addMessage(speaker, text);
+  const handleTranscription = (text: string) => {
+    addMessage(text);
     toast({
       title: "음성 인식 완료",
-      description: `${speaker === 'doctor' ? '의사' : '환자'}: ${text.substring(0, 50)}...`,
+      description: `${text.substring(0, 50)}...`,
     });
   };
 
@@ -60,14 +58,14 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   } = useVoiceRecorder({
     onTranscription: handleTranscription,
     onError: handleError,
-    currentSpeaker: currentSpeaker,
   });
 
   const handleStartRecording = async () => {
     try {
       await startRecording();
+      setConversationStarted(true);
       toast({
-        title: "녹음 시작",
+        title: "대화 시작",
         description: "음성 인식이 시작되었습니다.",
       });
     } catch (error) {
@@ -122,127 +120,100 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
         </CardHeader>
       </Card>
 
-      {/* 화자 선택 */}
-      <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">현재 화자 설정</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex space-x-2">
-            <Button
-              variant={currentSpeaker === 'doctor' ? 'default' : 'outline'}
-              onClick={() => setCurrentSpeaker('doctor')}
-              className="flex items-center space-x-2"
-            >
-              <UserRound className="w-4 h-4" />
-              <span>의사</span>
-            </Button>
-            <Button
-              variant={currentSpeaker === 'patient' ? 'default' : 'outline'}
-              onClick={() => setCurrentSpeaker('patient')}
-              className="flex items-center space-x-2"
-            >
-              <User className="w-4 h-4" />
-              <span>환자</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 대화 내용 */}
-      <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Mic className="w-5 h-5 text-medical-primary" />
-            <span>실시간 대화 기록</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-96 w-full border rounded-lg p-4 bg-background" ref={scrollAreaRef}>
-            {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <p>대화를 시작하려면 녹음 버튼을 눌러주세요</p>
+      {/* 대화 시작 전 또는 실시간 대화 기록 */}
+      {!conversationStarted ? (
+        <Card className="shadow-[var(--shadow-card)]">
+          <CardContent className="py-12">
+            <div className="flex flex-col items-center justify-center space-y-6">
+              <div className="p-4 rounded-full bg-medical-primary/10">
+                <Mic className="w-8 h-8 text-medical-primary" />
               </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex items-start space-x-3 ${
-                      message.speaker === 'doctor' ? 'justify-start' : 'justify-end'
-                    }`}
-                  >
-                    {message.speaker === 'doctor' && (
-                      <div className="p-2 rounded-full bg-medical-primary/10">
-                        <UserRound className="w-4 h-4 text-medical-primary" />
-                      </div>
-                    )}
-                    <div
-                      className={`max-w-xs px-4 py-2 rounded-lg ${
-                        message.speaker === 'doctor'
-                          ? 'bg-medical-light text-foreground'
-                          : 'bg-medical-primary text-white'
-                      }`}
-                    >
-                      <p className="text-sm font-medium mb-1">
-                        {message.speaker === 'doctor' ? '의사' : '환자'}
-                      </p>
-                      <p className="text-sm">{message.content}</p>
-                      <p className="text-xs mt-1 opacity-70">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-2">대화 준비</h3>
+                <p className="text-muted-foreground mb-6">
+                  대화 시작 버튼을 눌러 음성 인식을 시작하세요
+                </p>
+                <Button
+                  onClick={handleStartRecording}
+                  disabled={isProcessing}
+                  className="bg-medical-success hover:bg-medical-success/90 text-white px-8 py-3"
+                >
+                  <Mic className="w-4 h-4 mr-2" />
+                  대화 시작
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="shadow-[var(--shadow-card)]">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Mic className="w-5 h-5 text-medical-primary" />
+              <span>실시간 대화 기록</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-96 w-full border rounded-lg p-4 bg-background" ref={scrollAreaRef}>
+              {messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>음성 인식 결과가 여기에 표시됩니다...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message) => (
+                    <div key={message.id} className="p-3 rounded-lg bg-medical-light/50 border">
+                      <p className="text-sm mb-2">{message.content}</p>
+                      <p className="text-xs text-muted-foreground">
                         {message.timestamp.toLocaleTimeString()}
                       </p>
                     </div>
-                    {message.speaker === 'patient' && (
-                      <div className="p-2 rounded-full bg-medical-success/10">
-                        <User className="w-4 h-4 text-medical-success" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
 
-          <div className="flex items-center justify-center space-x-4 mt-6">
-            {!isRecording ? (
-              <Button
-                onClick={handleStartRecording}
-                disabled={isProcessing}
-                className="bg-medical-success hover:bg-medical-success/90 text-white px-6 py-3"
-              >
-                <Mic className="w-4 h-4 mr-2" />
-                대화 저장 시작
-              </Button>
-            ) : (
-              <div className="flex space-x-3">
+            <div className="flex items-center justify-center space-x-4 mt-6">
+              {!isRecording ? (
                 <Button
-                  onClick={handleStopRecording}
-                  variant="outline"
+                  onClick={handleStartRecording}
                   disabled={isProcessing}
-                  className="border-medical-warning text-medical-warning hover:bg-medical-warning/10"
+                  className="bg-medical-success hover:bg-medical-success/90 text-white px-6 py-3"
                 >
-                  <MicOff className="w-4 h-4 mr-2" />
-                  일시 정지
+                  <Mic className="w-4 h-4 mr-2" />
+                  녹음 재개
                 </Button>
-                <Button
-                  onClick={handleEndSession}
-                  className="bg-medical-warning hover:bg-medical-warning/90 text-white"
-                >
-                  <Square className="w-4 h-4 mr-2" />
-                  진료 종료
-                </Button>
+              ) : (
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={handleStopRecording}
+                    variant="outline"
+                    disabled={isProcessing}
+                    className="border-medical-warning text-medical-warning hover:bg-medical-warning/10"
+                  >
+                    <MicOff className="w-4 h-4 mr-2" />
+                    일시 정지
+                  </Button>
+                  <Button
+                    onClick={handleEndSession}
+                    className="bg-medical-warning hover:bg-medical-warning/90 text-white"
+                  >
+                    <Square className="w-4 h-4 mr-2" />
+                    진료 종료
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {isProcessing && (
+              <div className="flex items-center justify-center mt-4 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                음성을 텍스트로 변환 중...
               </div>
             )}
-          </div>
-
-          {isProcessing && (
-            <div className="flex items-center justify-center mt-4 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              음성을 텍스트로 변환 중...
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
