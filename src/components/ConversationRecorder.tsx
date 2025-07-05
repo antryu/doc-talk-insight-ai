@@ -22,6 +22,8 @@ interface ConversationRecorderProps {
 export default function ConversationRecorder({ patientInfo, onEndRecording }: ConversationRecorderProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationStarted, setConversationStarted] = useState(false);
+  const [isEndingSession, setIsEndingSession] = useState(false);
+  const [messagesAtEndRequest, setMessagesAtEndRequest] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -79,40 +81,57 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   };
 
   const handleEndSession = () => {
-    console.log('handleEndSession called - current messages:', messages);
+    console.log('=== 진료종료 요청 ===');
+    console.log('현재 메시지 수:', messages.length);
+    console.log('녹음 중:', isRecording);
+    console.log('처리 중:', isProcessing);
     
-    if (isRecording) {
-      console.log('Recording active, stopping...');
+    if (isRecording || isProcessing) {
+      // 녹음 중이거나 처리 중이면 종료 대기 상태로 설정
+      setIsEndingSession(true);
+      setMessagesAtEndRequest(messages.length);
       
-      // 녹음 중지
-      stopRecording();
+      if (isRecording) {
+        console.log('녹음 중지 중...');
+        stopRecording();
+      }
       
-      // 음성 처리 완료까지 기다린 후 종료 (최대 10초)
-      let waitTime = 0;
-      const checkProcessingComplete = () => {
-        console.log(`Waiting for processing... (${waitTime}s) isProcessing:`, isProcessing);
-        
-        if (!isProcessing || waitTime >= 10) {
-          console.log('Processing completed or timeout reached, ending session');
-          setTimeout(() => {
-            console.log('Ending session with messages:', messages);
-            onEndRecording(messages);
-          }, 1000); // UI 업데이트를 위한 1초 추가 대기
-        } else {
-          waitTime += 0.5;
-          setTimeout(checkProcessingComplete, 500);
-        }
-      };
-      
-      // 0.5초 후부터 체크 시작 (stopRecording 처리 시간)
-      setTimeout(checkProcessingComplete, 500);
+      console.log('음성 인식 완료 대기 중...');
       
     } else {
-      // 녹음 중이 아니면 바로 종료
-      console.log('Not recording, ending immediately with messages:', messages);
+      // 녹음도 처리도 안 하고 있으면 바로 종료
+      console.log('바로 진료 종료');
       onEndRecording(messages);
     }
   };
+
+  // 새 메시지 추가를 감지하여 진료 종료 처리
+  useEffect(() => {
+    if (isEndingSession) {
+      console.log('진료 종료 대기 중 - 현재 메시지 수:', messages.length, '요청 시:', messagesAtEndRequest);
+      
+      // 새로운 메시지가 추가되었거나 처리가 완료되면 종료
+      if (messages.length > messagesAtEndRequest && !isProcessing) {
+        console.log('=== 새 메시지 감지됨, 진료 종료 실행 ===');
+        console.log('최종 메시지들:', messages);
+        
+        setIsEndingSession(false);
+        
+        // UI 업데이트를 위한 짧은 대기
+        setTimeout(() => {
+          onEndRecording(messages);
+        }, 1500);
+        
+      } else if (!isRecording && !isProcessing && messages.length === messagesAtEndRequest) {
+        // 새 메시지가 없고 처리도 완료된 경우 (음성 인식 실패 시)
+        console.log('=== 추가 메시지 없음, 현재 상태로 진료 종료 ===');
+        setIsEndingSession(false);
+        setTimeout(() => {
+          onEndRecording(messages);
+        }, 1000);
+      }
+    }
+  }, [messages, isEndingSession, messagesAtEndRequest, isProcessing, isRecording, onEndRecording]);
 
   // 스크롤 자동 이동
   useEffect(() => {
