@@ -83,14 +83,25 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
       stopRecording();
     }
     
-    // 녹음 정리 시간을 충분히 준 후 종료 처리
-    setTimeout(() => {
+    // 진행 중인 음성 인식 완료를 기다린 후 종료 처리
+    const waitForProcessing = () => {
+      if (isProcessing) {
+        console.log('Still processing audio, waiting...');
+        setTimeout(waitForProcessing, 1000);
+        return;
+      }
+      
+      console.log('Processing completed, ending session with messages:', messages);
       // 현재 messages 상태를 직접 참조
       setMessages(currentMessages => {
+        console.log('Final messages being sent:', currentMessages);
         onEndRecording(currentMessages);
         return currentMessages;
       });
-    }, 3000);
+    };
+    
+    // 5초 후 또는 처리 완료 후 종료
+    setTimeout(waitForProcessing, 5000);
   };
 
   // 스크롤 자동 이동
