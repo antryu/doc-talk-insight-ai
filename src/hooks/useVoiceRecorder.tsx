@@ -5,9 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface UseVoiceRecorderProps {
   onTranscription: (text: string, speaker: 'doctor' | 'patient') => void;
   onError: (error: string) => void;
+  currentSpeaker: 'doctor' | 'patient';
 }
 
-export const useVoiceRecorder = ({ onTranscription, onError }: UseVoiceRecorderProps) => {
+export const useVoiceRecorder = ({ onTranscription, onError, currentSpeaker }: UseVoiceRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -51,7 +52,7 @@ export const useVoiceRecorder = ({ onTranscription, onError }: UseVoiceRecorderP
       console.error('Error starting recording:', error);
       onError('마이크 접근 권한이 필요합니다.');
     }
-  }, [onTranscription, onError]);
+  }, [onTranscription, onError, currentSpeaker]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -81,9 +82,8 @@ export const useVoiceRecorder = ({ onTranscription, onError }: UseVoiceRecorderP
       console.log('Voice-to-text result:', data);
       
       if (data?.text && data.text.trim()) {
-        // 간단한 화자 구분 로직 (실제로는 더 정교한 로직 필요)
-        const speaker = Math.random() > 0.5 ? 'doctor' : 'patient';
-        onTranscription(data.text.trim(), speaker);
+        // 현재 선택된 화자 사용
+        onTranscription(data.text.trim(), currentSpeaker);
       }
     } catch (error) {
       console.error('Error processing audio:', error);

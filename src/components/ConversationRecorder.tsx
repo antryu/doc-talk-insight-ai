@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   } = useVoiceRecorder({
     onTranscription: handleTranscription,
     onError: handleError,
+    currentSpeaker: currentSpeaker,
   });
 
   const handleStartRecording = async () => {
@@ -86,10 +88,6 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
       stopRecording();
     }
     onEndRecording(messages);
-  };
-
-  const handleSpeakerToggle = () => {
-    setCurrentSpeaker(prev => prev === 'doctor' ? 'patient' : 'doctor');
   };
 
   // 스크롤 자동 이동
