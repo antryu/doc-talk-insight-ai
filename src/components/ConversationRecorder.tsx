@@ -86,7 +86,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     // 녹음 정리 시간을 충분히 준 후 종료 처리
     setTimeout(() => {
       onEndRecording(messages);
-    }, 500);
+    }, 3000);
   };
 
   // 스크롤 자동 이동
