@@ -1,9 +1,13 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mic, MicOff, Square, User, UserRound } from "lucide-react";
+import { Mic, MicOff, Square, User, UserRound, Loader2 } from "lucide-react";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { convertSpeechToText } from "@/services/naverClovaService";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -18,13 +22,12 @@ interface ConversationRecorderProps {
 }
 
 export default function ConversationRecorder({ patientInfo, onEndRecording }: ConversationRecorderProps) {
-  const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentSpeaker, setCurrentSpeaker] = useState<'doctor' | 'patient'>('doctor');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
-  // 시뮬레이션을 위한 더미 메시지 추가
-  const addSimulatedMessage = (speaker: 'doctor' | 'patient', content: string) => {
+  const addMessage = (speaker: 'doctor' | 'patient', content: string) => {
     const newMessage: Message = {
       id: Date.now().toString(),
       speaker,
@@ -34,35 +37,62 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     setMessages(prev => [...prev, newMessage]);
   };
 
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    // 시뮬레이션: 실제로는 네이버 클로바 음성 인식 API를 사용
-    addSimulatedMessage('doctor', '안녕하세요. 어떤 증상으로 오셨나요?');
+  const handleTranscription = (text: string, speaker: 'doctor' | 'patient') => {
+    addMessage(speaker, text);
+    toast({
+      title: "음성 인식 완료",
+      description: `${speaker === 'doctor' ? '의사' : '환자'}: ${text.substring(0, 50)}...`,
+    });
+  };
+
+  const handleError = (error: string) => {
+    toast({
+      title: "오류",
+      description: error,
+      variant: "destructive",
+    });
+  };
+
+  const {
+    isRecording,
+    isProcessing,
+    startRecording,
+    stopRecording,
+  } = useVoiceRecorder({
+    onTranscription: handleTranscription,
+    onError: handleError,
+  });
+
+  const handleStartRecording = async () => {
+    try {
+      await startRecording();
+      toast({
+        title: "녹음 시작",
+        description: "음성 인식이 시작되었습니다.",
+      });
+    } catch (error) {
+      handleError('녹음을 시작할 수 없습니다.');
+    }
   };
 
   const handleStopRecording = () => {
-    setIsRecording(false);
+    stopRecording();
+    toast({
+      title: "녹음 일시정지",
+      description: "음성 인식이 일시정지되었습니다.",
+    });
   };
 
   const handleEndSession = () => {
+    if (isRecording) {
+      stopRecording();
+    }
     onEndRecording(messages);
   };
 
-  // 시뮬레이션을 위한 자동 메시지 추가
-  useEffect(() => {
-    if (isRecording && messages.length === 1) {
-      const timer = setTimeout(() => {
-        addSimulatedMessage('patient', '며칠 전부터 목이 아프고 기침이 나요. 열도 조금 있는 것 같아요.');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-    if (isRecording && messages.length === 2) {
-      const timer = setTimeout(() => {
-        addSimulatedMessage('doctor', '언제부터 증상이 시작되었나요? 다른 동반 증상은 없으신가요?');
-      }, 6000);
-      return () => clearTimeout(timer);
-    }
-  }, [isRecording, messages.length]);
+  const handleSpeakerToggle = () => {
+    setCurrentSpeaker(prev => prev === 'doctor' ? 'patient' : 'doctor');
+  };
 
   // 스크롤 자동 이동
   useEffect(() => {
@@ -86,11 +116,41 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
                 <p className="text-sm text-muted-foreground">나이: {patientInfo.age}세</p>
               </div>
             </div>
-            <Badge variant={isRecording ? "default" : "secondary"} className="bg-medical-success text-white">
-              {isRecording ? "🔴 녹음 중" : "대기 중"}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              <Badge variant={isRecording ? "default" : "secondary"} className="bg-medical-success text-white">
+                {isRecording ? "🔴 녹음 중" : isProcessing ? "🔄 처리 중" : "대기 중"}
+              </Badge>
+              {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}
+            </div>
           </div>
         </CardHeader>
+      </Card>
+
+      {/* 화자 선택 */}
+      <Card className="shadow-[var(--shadow-card)]">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">현재 화자 설정</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex space-x-2">
+            <Button
+              variant={currentSpeaker === 'doctor' ? 'default' : 'outline'}
+              onClick={() => setCurrentSpeaker('doctor')}
+              className="flex items-center space-x-2"
+            >
+              <UserRound className="w-4 h-4" />
+              <span>의사</span>
+            </Button>
+            <Button
+              variant={currentSpeaker === 'patient' ? 'default' : 'outline'}
+              onClick={() => setCurrentSpeaker('patient')}
+              className="flex items-center space-x-2"
+            >
+              <User className="w-4 h-4" />
+              <span>환자</span>
+            </Button>
+          </div>
+        </CardContent>
       </Card>
 
       {/* 대화 내용 */}
@@ -151,6 +211,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
             {!isRecording ? (
               <Button
                 onClick={handleStartRecording}
+                disabled={isProcessing}
                 className="bg-medical-success hover:bg-medical-success/90 text-white px-6 py-3"
               >
                 <Mic className="w-4 h-4 mr-2" />
@@ -161,6 +222,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
                 <Button
                   onClick={handleStopRecording}
                   variant="outline"
+                  disabled={isProcessing}
                   className="border-medical-warning text-medical-warning hover:bg-medical-warning/10"
                 >
                   <MicOff className="w-4 h-4 mr-2" />
@@ -176,6 +238,13 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
               </div>
             )}
           </div>
+
+          {isProcessing && (
+            <div className="flex items-center justify-center mt-4 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              음성을 텍스트로 변환 중...
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
