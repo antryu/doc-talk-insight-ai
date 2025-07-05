@@ -1,5 +1,6 @@
 
 import { useState, useRef, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseVoiceRecorderProps {
   onTranscription: (text: string, speaker: 'doctor' | 'patient') => void;
@@ -66,21 +67,23 @@ export const useVoiceRecorder = ({ onTranscription, onError }: UseVoiceRecorderP
       const formData = new FormData();
       formData.append('audio', audioBlob, 'audio.webm');
 
-      const response = await fetch('/api/voice-to-text', {
-        method: 'POST',
+      console.log('Calling Supabase Edge Function for voice-to-text...');
+      
+      const { data, error } = await supabase.functions.invoke('voice-to-text', {
         body: formData,
       });
 
-      if (!response.ok) {
+      if (error) {
+        console.error('Supabase function error:', error);
         throw new Error('음성 변환에 실패했습니다.');
       }
 
-      const result = await response.json();
+      console.log('Voice-to-text result:', data);
       
-      if (result.text && result.text.trim()) {
+      if (data?.text && data.text.trim()) {
         // 간단한 화자 구분 로직 (실제로는 더 정교한 로직 필요)
         const speaker = Math.random() > 0.5 ? 'doctor' : 'patient';
-        onTranscription(result.text.trim(), speaker);
+        onTranscription(data.text.trim(), speaker);
       }
     } catch (error) {
       console.error('Error processing audio:', error);
