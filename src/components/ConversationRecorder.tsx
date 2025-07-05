@@ -81,36 +81,35 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   const handleEndSession = () => {
     console.log('handleEndSession called - current messages:', messages);
     
-    // 즉시 녹음 상태를 종료로 변경
     if (isRecording) {
-      stopRecording();
-    }
-    
-    // 음성 인식 처리 완료를 기다린 후 종료 처리
-    const waitForProcessingComplete = () => {
-      if (isProcessing) {
-        console.log('Still processing audio, waiting for completion...');
-        setTimeout(waitForProcessingComplete, 500);
-        return;
-      }
+      console.log('Recording active, stopping...');
       
-      // 음성 인식 완료 후 약간의 추가 대기 (UI 업데이트 시간)
-      setTimeout(() => {
-        setMessages(currentMessages => {
-          console.log('Audio processing completed, ending session with messages:', currentMessages);
-          onEndRecording(currentMessages);
-          return currentMessages;
-        });
-      }, 1000);
-    };
-    
-    // 음성 인식 처리 상태 확인 및 대기
-    if (isProcessing) {
-      console.log('Audio processing in progress, waiting...');
-      waitForProcessingComplete();
+      // 녹음 중지
+      stopRecording();
+      
+      // 음성 처리 완료까지 기다린 후 종료 (최대 10초)
+      let waitTime = 0;
+      const checkProcessingComplete = () => {
+        console.log(`Waiting for processing... (${waitTime}s) isProcessing:`, isProcessing);
+        
+        if (!isProcessing || waitTime >= 10) {
+          console.log('Processing completed or timeout reached, ending session');
+          setTimeout(() => {
+            console.log('Ending session with messages:', messages);
+            onEndRecording(messages);
+          }, 1000); // UI 업데이트를 위한 1초 추가 대기
+        } else {
+          waitTime += 0.5;
+          setTimeout(checkProcessingComplete, 500);
+        }
+      };
+      
+      // 0.5초 후부터 체크 시작 (stopRecording 처리 시간)
+      setTimeout(checkProcessingComplete, 500);
+      
     } else {
-      // 현재 처리 중인 음성이 없으면 바로 종료
-      console.log('No audio processing, ending immediately with messages:', messages);
+      // 녹음 중이 아니면 바로 종료
+      console.log('Not recording, ending immediately with messages:', messages);
       onEndRecording(messages);
     }
   };
