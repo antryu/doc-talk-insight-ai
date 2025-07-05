@@ -38,13 +38,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await db.init();
       
       // 로컬 스토리지에서 세션 확인
-      const sessionData = localStorage.getItem('meditalk_session');
+      const sessionData = localStorage.getItem('medinalab_session');
       if (sessionData) {
         const session = JSON.parse(sessionData);
         if (session.expires_at > Date.now()) {
           setUser(session.user);
         } else {
-          localStorage.removeItem('meditalk_session');
+          localStorage.removeItem('medinalab_session');
         }
       }
     } catch (error) {
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user,
           expires_at: Date.now() + (24 * 60 * 60 * 1000)
         };
-        localStorage.setItem('meditalk_session', JSON.stringify(session));
+        localStorage.setItem('medinalab_session', JSON.stringify(session));
         
         return {};
       } else {
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user: newUser,
         expires_at: Date.now() + (24 * 60 * 60 * 1000)
       };
-      localStorage.setItem('meditalk_session', JSON.stringify(session));
+      localStorage.setItem('medinalab_session', JSON.stringify(session));
       
       return {};
     } catch (error) {
@@ -101,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     setUser(null);
-    localStorage.removeItem('meditalk_session');
+    localStorage.removeItem('medinalab_session');
   };
 
   return (

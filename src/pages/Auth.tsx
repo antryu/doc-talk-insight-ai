@@ -91,7 +91,7 @@ export default function Auth() {
               <Stethoscope className="w-8 h-8 text-medical-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-foreground">MediTalk Pro</CardTitle>
+          <CardTitle className="text-2xl text-foreground">MedinaLab Pro</CardTitle>
           <CardDescription className="text-muted-foreground">
             환자 대화 기록 및 진료 관리 시스템
           </CardDescription>

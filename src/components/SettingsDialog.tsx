@@ -77,7 +77,7 @@ export default function SettingsDialog({ children }: SettingsDialogProps) {
       
       const a = document.createElement('a');
       a.href = url;
-      a.download = `meditalk-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `medinalab-backup-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

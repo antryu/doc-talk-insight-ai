@@ -34,7 +34,7 @@ export interface Settings {
 }
 
 class IndexedDBManager {
-  private dbName = 'MediTalkProDB';
+  private dbName = 'MedinaLabProDB';
   private version = 1;
   private db: IDBDatabase | null = null;
 
