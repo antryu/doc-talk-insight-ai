@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/LocalAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Stethoscope, UserPlus, LogIn } from "lucide-react";
 
@@ -36,7 +36,7 @@ export default function Auth() {
     if (error) {
       toast({
         title: "회원가입 실패",
-        description: error.message === "User already registered" 
+        description: error === "User already registered" 
           ? "이미 등록된 이메일입니다." 
           : "회원가입에 실패했습니다. 다시 시도해주세요.",
         variant: "destructive",
@@ -67,7 +67,7 @@ export default function Auth() {
     if (error) {
       toast({
         title: "로그인 실패",
-        description: error.message === "Invalid login credentials" 
+        description: error === "Invalid login credentials" 
           ? "이메일 또는 비밀번호가 올바르지 않습니다." 
           : "로그인에 실패했습니다. 다시 시도해주세요.",
         variant: "destructive",

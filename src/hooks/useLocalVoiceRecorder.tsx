@@ -1,17 +1,18 @@
-
 import { useState, useRef, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/indexedDB';
+import { useAuth } from '@/contexts/LocalAuthContext';
 
 interface UseVoiceRecorderProps {
   onTranscription: (text: string) => void;
   onError: (error: string) => void;
 }
 
-export const useVoiceRecorder = ({ onTranscription, onError }: UseVoiceRecorderProps) => {
+export const useLocalVoiceRecorder = ({ onTranscription, onError }: UseVoiceRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const { user } = useAuth();
 
   const startRecording = useCallback(async () => {
     try {
@@ -64,28 +65,48 @@ export const useVoiceRecorder = ({ onTranscription, onError }: UseVoiceRecorderP
     setIsProcessing(true);
     
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'audio.webm');
+      // 사용자 설정에서 OpenAI API 키 가져오기
+      if (!user) {
+        throw new Error('로그인이 필요합니다.');
+      }
 
-      console.log('Calling Supabase Edge Function for voice-to-text...');
+      const settings = await db.getSettings(user.id);
+      const openaiApiKey = settings?.openai_api_key;
+
+      if (!openaiApiKey) {
+        throw new Error('OpenAI API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.');
+      }
+
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'audio.webm');
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'ko');
+
+      console.log('Calling OpenAI Whisper API directly...');
       
-      const { data, error } = await supabase.functions.invoke('voice-to-text', {
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+        },
         body: formData,
       });
 
-      if (error) {
-        console.error('Supabase function error:', error);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenAI API error:', errorText);
         throw new Error('음성 변환에 실패했습니다.');
       }
 
-      console.log('Voice-to-text result:', data);
+      const result = await response.json();
+      console.log('Voice-to-text result:', result);
       
-      if (data?.text && data.text.trim()) {
-        onTranscription(data.text.trim());
+      if (result.text && result.text.trim()) {
+        onTranscription(result.text.trim());
       }
     } catch (error) {
       console.error('Error processing audio:', error);
-      onError('음성 변환 중 오류가 발생했습니다.');
+      onError(error instanceof Error ? error.message : '음성 변환 중 오류가 발생했습니다.');
     } finally {
       setIsProcessing(false);
     }

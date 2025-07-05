@@ -10,10 +10,12 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/LocalAuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/indexedDB";
 import PatientRegistration from "@/components/PatientRegistration";
 import ConversationRecorder from "@/components/ConversationRecorder";
+import SettingsDialog from "@/components/SettingsDialog";
 import { 
   Stethoscope, 
   Users, 
@@ -21,7 +23,8 @@ import {
   Activity, 
   LogOut, 
   User,
-  Menu
+  Menu,
+  Settings
 } from "lucide-react";
 
 interface PatientInfo {
@@ -52,13 +55,32 @@ export default function Index() {
     });
   };
 
-  const handleEndRecording = (messages: Message[]) => {
-    setConversation(messages);
-    setCurrentStep('analysis');
-    toast({
-      title: "대화 기록 완료",
-      description: "진료 대화가 성공적으로 저장되었습니다.",
-    });
+  const handleEndRecording = async (messages: Message[]) => {
+    if (!patientInfo || !user) return;
+    
+    try {
+      // IndexedDB에 진료 기록 저장
+      await db.createPatientRecord(
+        user.id,
+        patientInfo.name,
+        patientInfo.age,
+        messages
+      );
+      
+      setConversation(messages);
+      setCurrentStep('analysis');
+      toast({
+        title: "대화 기록 완료",
+        description: "진료 대화가 성공적으로 저장되었습니다.",
+      });
+    } catch (error) {
+      console.error('Failed to save patient record:', error);
+      toast({
+        title: "오류",
+        description: "진료 기록 저장 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleStartNewConsultation = () => {
@@ -97,13 +119,14 @@ export default function Index() {
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
-              <User className="w-4 h-4" />
-              <span>{user?.full_name || user?.email}</span>
-            </div>
-            
-            <Sheet>
+            <div className="flex items-center space-x-4">
+              <SettingsDialog>
+                <Button variant="outline" size="icon">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </SettingsDialog>
+              
+              <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon">
                   <Menu className="w-4 h-4" />

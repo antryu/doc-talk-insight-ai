@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mic, MicOff, Square, User, Loader2 } from "lucide-react";
-import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { useLocalVoiceRecorder } from "@/hooks/useLocalVoiceRecorder";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -51,7 +51,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     isProcessing,
     startRecording,
     stopRecording,
-  } = useVoiceRecorder({
+  } = useLocalVoiceRecorder({
     onTranscription: handleTranscription,
     onError: handleError,
   });
