@@ -84,9 +84,6 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
       stopRecording();
     }
     
-    // 진료 종료 상태를 명확히 하기 위해 대화 시작 상태도 리셋
-    setConversationStarted(false);
-    
     // 진행 중인 음성 인식 완료를 기다린 후 종료 처리
     const waitForProcessing = () => {
       if (isProcessing) {
@@ -96,7 +93,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
       }
       
       console.log('Processing completed, ending session with messages:', messages);
-      // 현재 messages 상태를 직접 참조
+      // 현재 messages 상태를 직접 참조하여 즉시 종료 처리
       setMessages(currentMessages => {
         console.log('Final messages being sent:', currentMessages);
         onEndRecording(currentMessages);
