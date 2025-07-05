@@ -1,15 +1,10 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const NAVER_CLOVA_CONFIG = {
-  clientId: 'h374bmg0e8',
-  clientSecret: 'dNSrjVkugEORDdrMQ2Z4TveQPkri2UdRFOhyoeqE',
-  invokeUrl: 'https://naveropenapi.apigw.ntruss.com/recog/v1/stt?lang=Kor',
 };
 
 serve(async (req) => {
@@ -23,6 +18,11 @@ serve(async (req) => {
       throw new Error('Method not allowed');
     }
 
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured');
+    }
+
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File;
     
@@ -32,34 +32,35 @@ serve(async (req) => {
 
     console.log('Processing audio file:', audioFile.name, audioFile.size, audioFile.type);
 
-    // 오디오 파일을 ArrayBuffer로 변환
-    const arrayBuffer = await audioFile.arrayBuffer();
+    // OpenAI Whisper API를 위한 FormData 준비
+    const whisperFormData = new FormData();
+    whisperFormData.append('file', audioFile, 'audio.webm');
+    whisperFormData.append('model', 'whisper-1');
+    whisperFormData.append('language', 'ko');
 
-    // 네이버 클로바 API 호출
-    const response = await fetch(NAVER_CLOVA_CONFIG.invokeUrl, {
+    // OpenAI Whisper API 호출
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/octet-stream',
-        'X-NCP-APIGW-API-KEY-ID': NAVER_CLOVA_CONFIG.clientId,
-        'X-NCP-APIGW-API-KEY': NAVER_CLOVA_CONFIG.clientSecret,
+        'Authorization': `Bearer ${openAIApiKey}`,
       },
-      body: arrayBuffer,
+      body: whisperFormData,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Naver Clova API error:', errorText);
+      console.error('OpenAI Whisper API error:', errorText);
       throw new Error(`API 호출 실패: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log('Naver Clova API response:', result);
+    console.log('OpenAI Whisper API response:', result);
     
     if (result.text) {
       return new Response(
         JSON.stringify({
           text: result.text,
-          confidence: result.confidence || 0.9
+          confidence: 0.9
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
