@@ -114,7 +114,7 @@ export default function Index() {
               <Stethoscope className="w-6 h-6 text-medical-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">MediTalk Pro</h1>
+              <h1 className="text-xl font-bold text-foreground">MedinaLab Pro</h1>
               <p className="text-sm text-muted-foreground">환자 대화 기록 및 진료 관리</p>
             </div>
           </div>
