@@ -17,8 +17,8 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 210 40% 20%;
 
-    --primary: 197 37% 96%;
-    --primary-foreground: 210 40% 20%;
+    --primary: 197 71% 73%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 197 100% 97%;
     --secondary-foreground: 210 40% 20%;
@@ -38,9 +38,9 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 197 37% 94%;
-    --input: 197 37% 94%;
-    --ring: 197 71% 73%;
+    --border: 197 37% 86%;
+    --input: 197 37% 88%;
+    --ring: 197 71% 60%;
 
     /* Medical specific colors - 병원스러운 색상 */
     --medical-primary: 197 71% 73%;
