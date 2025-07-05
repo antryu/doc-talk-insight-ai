@@ -86,21 +86,32 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
       stopRecording();
     }
     
-    // 현재 messages 상태를 직접 전달
-    console.log('Ending session with messages:', messages);
-    onEndRecording(messages);
+    // 음성 인식 처리 완료를 기다린 후 종료 처리
+    const waitForProcessingComplete = () => {
+      if (isProcessing) {
+        console.log('Still processing audio, waiting for completion...');
+        setTimeout(waitForProcessingComplete, 500);
+        return;
+      }
+      
+      // 음성 인식 완료 후 약간의 추가 대기 (UI 업데이트 시간)
+      setTimeout(() => {
+        setMessages(currentMessages => {
+          console.log('Audio processing completed, ending session with messages:', currentMessages);
+          onEndRecording(currentMessages);
+          return currentMessages;
+        });
+      }, 1000);
+    };
     
-    // 백그라운드에서 진행 중인 음성 인식이 있다면 완료 대기 (UI 변경 없음)
+    // 음성 인식 처리 상태 확인 및 대기
     if (isProcessing) {
-      console.log('Audio still processing in background...');
-      const waitForProcessing = () => {
-        if (isProcessing) {
-          setTimeout(waitForProcessing, 1000);
-          return;
-        }
-        console.log('Background audio processing completed');
-      };
-      setTimeout(waitForProcessing, 60000);
+      console.log('Audio processing in progress, waiting...');
+      waitForProcessingComplete();
+    } else {
+      // 현재 처리 중인 음성이 없으면 바로 종료
+      console.log('No audio processing, ending immediately with messages:', messages);
+      onEndRecording(messages);
     }
   };
 
