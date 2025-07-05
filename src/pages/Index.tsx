@@ -193,21 +193,36 @@ export default function Index() {
                   
                   {conversation.length > 0 ? (
                     <div className="bg-background border rounded-lg p-4 mb-6">
-                      <h4 className="font-medium mb-3">대화 기록</h4>
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        음성인식 대화기록
+                      </h4>
                       <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {conversation.map((message) => (
+                        {conversation.map((message, index) => (
                           <div key={message.id} className="p-3 rounded-lg bg-medical-light/50 border">
-                            <p className="text-sm">{message.content}</p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {message.timestamp.toLocaleTimeString()}
-                            </p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-medium text-medical-primary">
+                                #{index + 1} 음성인식 결과
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {message.timestamp.toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <p className="text-sm leading-relaxed">{message.content}</p>
                           </div>
                         ))}
+                      </div>
+                      <div className="mt-4 pt-3 border-t text-sm text-muted-foreground">
+                        총 {conversation.length}개의 음성인식 결과가 기록되었습니다.
                       </div>
                     </div>
                   ) : (
                     <div className="bg-background border rounded-lg p-4 mb-6">
-                      <p className="text-muted-foreground text-center">대화 기록이 없습니다.</p>
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        음성인식 대화기록
+                      </h4>
+                      <p className="text-muted-foreground text-center py-8">음성인식 결과가 없습니다.</p>
                     </div>
                   )}
                   
