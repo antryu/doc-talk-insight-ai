@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/LocalAuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseVoiceRecorderProps {
   onTranscription: (text: string) => void;
@@ -83,25 +84,19 @@ export const useLocalVoiceRecorder = ({ onTranscription, onError }: UseVoiceReco
 
       console.log('Calling Supabase Edge Function for voice-to-text...');
       
-      const response = await fetch('https://esnrwamfmjiwwftdiign.functions.supabase.co/voice-to-text', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ audio: base64Audio }),
+      const { data, error } = await supabase.functions.invoke('voice-to-text', {
+        body: { audio: base64Audio },
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Supabase function error:', errorText);
+      if (error) {
+        console.error('Supabase function error:', error);
         throw new Error('음성 변환에 실패했습니다.');
       }
 
-      const result = await response.json();
-      console.log('Voice-to-text result:', result);
+      console.log('Voice-to-text result:', data);
       
-      if (result.text && result.text.trim()) {
-        onTranscription(result.text.trim());
+      if (data?.text && data.text.trim()) {
+        onTranscription(data.text.trim());
       }
     } catch (error) {
       console.error('Error processing audio:', error);
