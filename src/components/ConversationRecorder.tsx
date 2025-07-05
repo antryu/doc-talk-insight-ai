@@ -36,10 +36,6 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
 
   const handleTranscription = (text: string) => {
     addMessage(text);
-    toast({
-      title: "음성 인식 완료",
-      description: `${text.substring(0, 50)}...`,
-    });
   };
 
   const handleError = (error: string) => {
