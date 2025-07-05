@@ -26,12 +26,18 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   const { toast } = useToast();
 
   const addMessage = (content: string) => {
+    console.log('addMessage called with:', content);
     const newMessage: Message = {
       id: Date.now().toString(),
       content,
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, newMessage]);
+    console.log('Created message:', newMessage);
+    setMessages(prev => {
+      const updated = [...prev, newMessage];
+      console.log('Updated messages array:', updated);
+      return updated;
+    });
   };
 
   const handleTranscription = (text: string) => {
@@ -85,7 +91,12 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     
     // 녹음 정리 시간을 충분히 준 후 종료 처리
     setTimeout(() => {
-      onEndRecording(messages);
+      // 현재 messages 상태를 직접 참조
+      setMessages(currentMessages => {
+        console.log('Final messages before ending:', currentMessages);
+        onEndRecording(currentMessages);
+        return currentMessages;
+      });
     }, 3000);
   };
 
