@@ -79,12 +79,14 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   };
 
   const handleEndSession = () => {
+    console.log('handleEndSession called, isRecording:', isRecording, 'messages:', messages);
     if (isRecording) {
       stopRecording();
     }
     
     // 녹음 정리 시간을 충분히 준 후 종료 처리
     setTimeout(() => {
+      console.log('About to call onEndRecording with messages:', messages);
       onEndRecording(messages);
     }, 3000);
   };

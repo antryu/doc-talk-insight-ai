@@ -53,8 +53,10 @@ export default function Index() {
   };
 
   const handleEndRecording = (messages: Message[]) => {
+    console.log('handleEndRecording called with messages:', messages);
     setConversation(messages);
     setCurrentStep('analysis');
+    console.log('Set currentStep to analysis');
     toast({
       title: "대화 기록 완료",
       description: "진료 대화가 성공적으로 저장되었습니다.",
