@@ -14,8 +14,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import PatientRegistration from "@/components/PatientRegistration";
 import ConversationRecorder from "@/components/ConversationRecorder";
-import DiagnosisAnalysis from "@/components/DiagnosisAnalysis";
-import PatientHistory from "@/components/PatientHistory";
 import { 
   Stethoscope, 
   Users, 
@@ -32,10 +30,17 @@ interface PatientInfo {
   consent: boolean;
 }
 
+interface Message {
+  id: string;
+  speaker: 'doctor' | 'patient';
+  content: string;
+  timestamp: Date;
+}
+
 export default function Index() {
   const [currentStep, setCurrentStep] = useState<'registration' | 'recording' | 'analysis'>('registration');
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
-  const [conversation, setConversation] = useState<string>('');
+  const [conversation, setConversation] = useState<Message[]>([]);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -48,8 +53,8 @@ export default function Index() {
     });
   };
 
-  const handleEndRecording = (conversationText: string) => {
-    setConversation(conversationText);
+  const handleEndRecording = (messages: Message[]) => {
+    setConversation(messages);
     setCurrentStep('analysis');
     toast({
       title: "대화 기록 완료",
@@ -60,7 +65,7 @@ export default function Index() {
   const handleStartNewConsultation = () => {
     setCurrentStep('registration');
     setPatientInfo(null);
-    setConversation('');
+    setConversation([]);
   };
 
   const handleLogout = async () => {
@@ -72,8 +77,8 @@ export default function Index() {
   };
 
   const getUserInitials = () => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase();
+    if (user?.full_name) {
+      return user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase();
     }
     return user?.email?.[0]?.toUpperCase() || 'U';
   };
@@ -96,7 +101,7 @@ export default function Index() {
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
               <User className="w-4 h-4" />
-              <span>{user?.user_metadata?.full_name || user?.email}</span>
+              <span>{user?.full_name || user?.email}</span>
             </div>
             
             <Sheet>
@@ -114,7 +119,7 @@ export default function Index() {
                     사용자 메뉴
                   </SheetTitle>
                   <SheetDescription>
-                    {user?.user_metadata?.full_name || user?.email}
+                    {user?.full_name || user?.email}
                   </SheetDescription>
                 </SheetHeader>
                 <div className="mt-6 space-y-4">
@@ -157,12 +162,15 @@ export default function Index() {
               />
             )}
             
-            {currentStep === 'analysis' && conversation && patientInfo && (
-              <DiagnosisAnalysis 
-                conversation={conversation}
-                patientInfo={patientInfo}
-                onStartNewConsultation={handleStartNewConsultation}
-              />
+            {currentStep === 'analysis' && conversation.length > 0 && patientInfo && (
+              <div className="p-6 bg-card rounded-lg border border-border">
+                <h3 className="text-lg font-semibold mb-4">진료 분석 결과</h3>
+                <p className="text-muted-foreground mb-4">환자: {patientInfo.name} ({patientInfo.age}세)</p>
+                <p className="text-muted-foreground mb-4">대화 기록: {conversation.length}개 메시지</p>
+                <Button onClick={handleStartNewConsultation} className="bg-medical-primary hover:bg-medical-primary/90">
+                  새 진료 시작
+                </Button>
+              </div>
             )}
           </div>
 
@@ -191,7 +199,10 @@ export default function Index() {
             </div>
 
             {/* Patient History */}
-            <PatientHistory />
+            <div className="p-4 rounded-lg bg-card border border-border">
+              <h3 className="text-lg font-semibold mb-4">최근 환자 기록</h3>
+              <p className="text-muted-foreground text-sm">아직 진료 기록이 없습니다.</p>
+            </div>
           </div>
         </div>
       </main>

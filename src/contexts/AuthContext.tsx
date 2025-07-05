@@ -1,11 +1,14 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+
+interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -24,62 +27,79 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 인증 상태 변경 리스너 설정
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+    // 로컬스토리지에서 사용자 정보 로드
+    const loadUser = () => {
+      const savedUser = localStorage.getItem('meditalk_user');
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
       }
-    );
-
-    // 기존 세션 확인
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
       setLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    loadUser();
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName || ''
-        }
+    try {
+      // 기존 사용자 확인
+      const users = JSON.parse(localStorage.getItem('meditalk_users') || '[]');
+      const existingUser = users.find((u: any) => u.email === email);
+      
+      if (existingUser) {
+        return { error: { message: 'User already registered' } };
       }
-    });
-    
-    return { error };
+
+      // 새 사용자 생성
+      const newUser = {
+        id: Date.now().toString(),
+        email,
+        password, // 실제 프로덕션에서는 해시화 필요
+        full_name: fullName || ''
+      };
+
+      users.push(newUser);
+      localStorage.setItem('meditalk_users', JSON.stringify(users));
+      
+      return { error: null };
+    } catch (error) {
+      return { error: { message: '회원가입에 실패했습니다.' } };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    return { error };
+    try {
+      const users = JSON.parse(localStorage.getItem('meditalk_users') || '[]');
+      const foundUser = users.find((u: any) => u.email === email && u.password === password);
+      
+      if (!foundUser) {
+        return { error: { message: 'Invalid login credentials' } };
+      }
+
+      const userInfo = {
+        id: foundUser.id,
+        email: foundUser.email,
+        full_name: foundUser.full_name
+      };
+
+      setUser(userInfo);
+      localStorage.setItem('meditalk_user', JSON.stringify(userInfo));
+      
+      return { error: null };
+    } catch (error) {
+      return { error: { message: '로그인에 실패했습니다.' } };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setUser(null);
+    localStorage.removeItem('meditalk_user');
   };
 
   const value = {
     user,
-    session,
     loading,
     signUp,
     signIn,
