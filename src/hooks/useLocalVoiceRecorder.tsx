@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react';
-import { db } from '@/lib/indexedDB';
 import { useAuth } from '@/contexts/LocalAuthContext';
 
 interface UseVoiceRecorderProps {
@@ -65,36 +64,36 @@ export const useLocalVoiceRecorder = ({ onTranscription, onError }: UseVoiceReco
     setIsProcessing(true);
     
     try {
-      // 사용자 설정에서 OpenAI API 키 가져오기
       if (!user) {
         throw new Error('로그인이 필요합니다.');
       }
 
-      const settings = await db.getSettings(user.id);
-      const openaiApiKey = settings?.openai_api_key;
-
-      if (!openaiApiKey) {
-        throw new Error('OpenAI API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.');
-      }
-
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'audio.webm');
-      formData.append('model', 'whisper-1');
-      formData.append('language', 'ko');
-
-      console.log('Calling OpenAI Whisper API directly...');
+      // Convert blob to base64
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 0x8000;
       
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
+        binary += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      
+      const base64Audio = btoa(binary);
+
+      console.log('Calling Supabase Edge Function for voice-to-text...');
+      
+      const response = await fetch('https://esnrwamfmjiwwftdiign.functions.supabase.co/voice-to-text', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({ audio: base64Audio }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('OpenAI API error:', errorText);
+        console.error('Supabase function error:', errorText);
         throw new Error('음성 변환에 실패했습니다.');
       }
 
