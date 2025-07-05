@@ -79,17 +79,16 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   };
 
   const handleEndSession = () => {
+    console.log('handleEndSession called - current messages:', messages);
+    
     // 즉시 녹음 상태를 종료로 변경
     if (isRecording) {
       stopRecording();
     }
     
-    // 현재 messages를 즉시 저장하고 진료완료 화면으로 이동
-    setMessages(currentMessages => {
-      console.log('Immediately ending session with messages:', currentMessages);
-      onEndRecording(currentMessages);
-      return currentMessages;
-    });
+    // 현재 messages 상태를 직접 전달
+    console.log('Ending session with messages:', messages);
+    onEndRecording(messages);
     
     // 백그라운드에서 진행 중인 음성 인식이 있다면 완료 대기 (UI 변경 없음)
     if (isProcessing) {
