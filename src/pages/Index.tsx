@@ -53,10 +53,8 @@ export default function Index() {
   };
 
   const handleEndRecording = (messages: Message[]) => {
-    console.log('handleEndRecording called with messages:', messages);
     setConversation(messages);
     setCurrentStep('analysis');
-    console.log('Set currentStep to analysis');
     toast({
       title: "대화 기록 완료",
       description: "진료 대화가 성공적으로 저장되었습니다.",
@@ -163,26 +161,32 @@ export default function Index() {
               />
             )}
             
-            {currentStep === 'analysis' && conversation.length > 0 && patientInfo && (
+            {currentStep === 'analysis' && patientInfo && (
               <div className="space-y-6">
                 <div className="p-6 bg-card rounded-lg border border-border">
                   <h3 className="text-lg font-semibold mb-4">진료 완료</h3>
                   <p className="text-muted-foreground mb-4">환자: {patientInfo.name} ({patientInfo.age}세)</p>
                   <p className="text-muted-foreground mb-6">대화 기록: {conversation.length}개 메시지</p>
                   
-                  <div className="bg-background border rounded-lg p-4 mb-6">
-                    <h4 className="font-medium mb-3">대화 기록</h4>
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {conversation.map((message) => (
-                        <div key={message.id} className="p-3 rounded-lg bg-medical-light/50 border">
-                          <p className="text-sm">{message.content}</p>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {message.timestamp.toLocaleTimeString()}
-                          </p>
-                        </div>
-                      ))}
+                  {conversation.length > 0 ? (
+                    <div className="bg-background border rounded-lg p-4 mb-6">
+                      <h4 className="font-medium mb-3">대화 기록</h4>
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {conversation.map((message) => (
+                          <div key={message.id} className="p-3 rounded-lg bg-medical-light/50 border">
+                            <p className="text-sm">{message.content}</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {message.timestamp.toLocaleTimeString()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-background border rounded-lg p-4 mb-6">
+                      <p className="text-muted-foreground text-center">대화 기록이 없습니다.</p>
+                    </div>
+                  )}
                   
                   <Button onClick={handleStartNewConsultation} className="bg-medical-primary hover:bg-medical-primary/90">
                     새 진료 시작
