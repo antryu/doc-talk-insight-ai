@@ -120,7 +120,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
         // UI 업데이트를 위한 짧은 대기
         setTimeout(() => {
           onEndRecording(messages);
-        }, 10000);
+        }, 30000);
         
       } else if (!isRecording && !isProcessing && messages.length === messagesAtEndRequest) {
         // 새 메시지가 없고 처리도 완료된 경우 (음성 인식 실패 시)
