@@ -79,9 +79,13 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   };
 
   const handleEndSession = () => {
+    // 즉시 녹음 상태를 종료로 변경
     if (isRecording) {
       stopRecording();
     }
+    
+    // 진료 종료 상태를 명확히 하기 위해 대화 시작 상태도 리셋
+    setConversationStarted(false);
     
     // 진행 중인 음성 인식 완료를 기다린 후 종료 처리
     const waitForProcessing = () => {
