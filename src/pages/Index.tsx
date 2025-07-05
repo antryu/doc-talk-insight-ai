@@ -32,7 +32,6 @@ interface PatientInfo {
 
 interface Message {
   id: string;
-  speaker: 'doctor' | 'patient';
   content: string;
   timestamp: Date;
 }
@@ -163,13 +162,30 @@ export default function Index() {
             )}
             
             {currentStep === 'analysis' && conversation.length > 0 && patientInfo && (
-              <div className="p-6 bg-card rounded-lg border border-border">
-                <h3 className="text-lg font-semibold mb-4">진료 분석 결과</h3>
-                <p className="text-muted-foreground mb-4">환자: {patientInfo.name} ({patientInfo.age}세)</p>
-                <p className="text-muted-foreground mb-4">대화 기록: {conversation.length}개 메시지</p>
-                <Button onClick={handleStartNewConsultation} className="bg-medical-primary hover:bg-medical-primary/90">
-                  새 진료 시작
-                </Button>
+              <div className="space-y-6">
+                <div className="p-6 bg-card rounded-lg border border-border">
+                  <h3 className="text-lg font-semibold mb-4">진료 완료</h3>
+                  <p className="text-muted-foreground mb-4">환자: {patientInfo.name} ({patientInfo.age}세)</p>
+                  <p className="text-muted-foreground mb-6">대화 기록: {conversation.length}개 메시지</p>
+                  
+                  <div className="bg-background border rounded-lg p-4 mb-6">
+                    <h4 className="font-medium mb-3">대화 기록</h4>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {conversation.map((message) => (
+                        <div key={message.id} className="p-3 rounded-lg bg-medical-light/50 border">
+                          <p className="text-sm">{message.content}</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {message.timestamp.toLocaleTimeString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <Button onClick={handleStartNewConsultation} className="bg-medical-primary hover:bg-medical-primary/90">
+                    새 진료 시작
+                  </Button>
+                </div>
               </div>
             )}
           </div>
