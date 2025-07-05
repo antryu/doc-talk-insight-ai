@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mic, MicOff, Square, User, UserRound, Loader2 } from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
-import { convertSpeechToText } from "@/services/naverClovaService";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
