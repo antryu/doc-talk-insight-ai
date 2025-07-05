@@ -62,13 +62,14 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
 
   const handleStartRecording = async () => {
     try {
-      await startRecording();
       setConversationStarted(true);
+      await startRecording();
       toast({
         title: "대화 시작",
         description: "음성 인식이 시작되었습니다.",
       });
     } catch (error) {
+      setConversationStarted(false);
       handleError('녹음을 시작할 수 없습니다.');
     }
   };
