@@ -100,8 +100,8 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
       });
     };
     
-    // 5초 후 또는 처리 완료 후 종료
-    setTimeout(waitForProcessing, 5000);
+    // 60초 후 또는 처리 완료 후 종료
+    setTimeout(waitForProcessing, 60000);
   };
 
   // 스크롤 자동 이동
