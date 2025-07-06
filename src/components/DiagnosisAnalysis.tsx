@@ -33,33 +33,44 @@ export default function DiagnosisAnalysis({ messages, patientInfo, onSaveDiagnos
   const handleAnalyzeDiagnosis = async () => {
     setIsAnalyzing(true);
     
-    // 시뮬레이션: 실제로는 GPT API를 사용하여 분석
-    setTimeout(() => {
-      const mockDiagnoses: Diagnosis[] = [
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { data, error } = await supabase.functions.invoke('diagnosis-analysis', {
+        body: {
+          messages,
+          patientInfo
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.diagnoses) {
+        setDiagnoses(data.diagnoses);
+        setAnalysisComplete(true);
+      } else {
+        throw new Error('진단 분석 결과를 받을 수 없습니다.');
+      }
+    } catch (error) {
+      console.error('Diagnosis analysis error:', error);
+      
+      // 오류 발생 시 기본 메시지 표시
+      const fallbackDiagnoses: Diagnosis[] = [
         {
-          disease: "급성 인두염 (Acute Pharyngitis)",
-          probability: 85,
-          symptoms: ["인후통", "기침", "미열"],
-          recommendation: "충분한 휴식과 수분 섭취, 필요시 진통제 복용"
-        },
-        {
-          disease: "감기 (Common Cold)",
-          probability: 70,
-          symptoms: ["기침", "인후통", "코막힘 가능성"],
-          recommendation: "대증 치료, 충분한 휴식"
-        },
-        {
-          disease: "급성 기관지염 (Acute Bronchitis)",
-          probability: 45,
-          symptoms: ["지속적인 기침", "가래"],
-          recommendation: "추가 검사 필요, 증상 모니터링"
+          disease: "진단 분석 오류",
+          probability: 0,
+          symptoms: ["분석 중 오류가 발생했습니다"],
+          recommendation: "전문의와 직접 상담하여 정확한 진단을 받으시기 바랍니다."
         }
       ];
       
-      setDiagnoses(mockDiagnoses);
-      setIsAnalyzing(false);
+      setDiagnoses(fallbackDiagnoses);
       setAnalysisComplete(true);
-    }, 3000);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleSaveResults = () => {

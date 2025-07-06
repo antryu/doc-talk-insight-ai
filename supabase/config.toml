@@ -1,1 +1,7 @@
 project_id = "esnrwamfmjiwwftdiign"
+
+[functions.voice-to-text]
+verify_jwt = false
+
+[functions.diagnosis-analysis]
+verify_jwt = false

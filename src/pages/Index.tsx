@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
@@ -12,9 +12,10 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/LocalAuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/indexedDB";
+import { db, type PatientRecord } from "@/lib/indexedDB";
 import PatientRegistration from "@/components/PatientRegistration";
 import ConversationRecorder from "@/components/ConversationRecorder";
+import DiagnosisAnalysis from "@/components/DiagnosisAnalysis";
 import SettingsDialog from "@/components/SettingsDialog";
 import { 
   Stethoscope, 
@@ -24,7 +25,8 @@ import {
   LogOut, 
   User,
   Menu,
-  Settings
+  Settings,
+  Brain
 } from "lucide-react";
 
 interface PatientInfo {
@@ -40,9 +42,12 @@ interface Message {
 }
 
 export default function Index() {
-  const [currentStep, setCurrentStep] = useState<'registration' | 'recording' | 'analysis'>('registration');
+  const [currentStep, setCurrentStep] = useState<'registration' | 'recording' | 'analysis' | 'diagnosis'>('registration');
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
+  const [recentRecords, setRecentRecords] = useState<PatientRecord[]>([]);
+  const [todayCount, setTodayCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -87,7 +92,47 @@ export default function Index() {
     setCurrentStep('registration');
     setPatientInfo(null);
     setConversation([]);
+    loadPatientRecords(); // 새 진료 시작 시 기록 새로고침
   };
+
+  const loadPatientRecords = async () => {
+    if (!user) return;
+    
+    try {
+      const records = await db.getPatientRecords(user.id);
+      setRecentRecords(records.slice(0, 5)); // 최근 5개만 표시
+      setTotalCount(records.length);
+      
+      // 오늘 진료 수 계산
+      const today = new Date();
+      const todayRecords = records.filter(record => {
+        const recordDate = new Date(record.created_at);
+        return recordDate.toDateString() === today.toDateString();
+      });
+      setTodayCount(todayRecords.length);
+    } catch (error) {
+      console.error('Failed to load patient records:', error);
+    }
+  };
+
+  const handleDiagnosisAnalysis = () => {
+    setCurrentStep('diagnosis');
+  };
+
+  const handleSaveDiagnosis = async (diagnoses: any[]) => {
+    toast({
+      title: "진단 결과 저장",
+      description: "AI 진단 분석 결과가 저장되었습니다.",
+    });
+    loadPatientRecords(); // 기록 새로고침
+  };
+
+  // 컴포넌트 마운트 시 환자 기록 로드
+  useEffect(() => {
+    if (user) {
+      loadPatientRecords();
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
@@ -226,14 +271,38 @@ export default function Index() {
                     </div>
                   )}
                   
-                  <Button onClick={handleStartNewConsultation} className="bg-medical-primary hover:bg-medical-primary/90">
-                    새 진료 시작
-                  </Button>
+                  <div className="flex space-x-3">
+                    <Button 
+                      onClick={handleDiagnosisAnalysis} 
+                      className="bg-medical-primary hover:bg-medical-primary/90 text-white"
+                    >
+                      <Brain className="w-4 h-4 mr-2" />
+                      예상 병명 분석
+                    </Button>
+                    <Button 
+                      onClick={handleStartNewConsultation} 
+                      variant="outline"
+                    >
+                      새 진료 시작
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
+            
+            {currentStep === 'diagnosis' && patientInfo && conversation.length > 0 && (
+              <DiagnosisAnalysis 
+                messages={conversation.map(msg => ({
+                  id: msg.id,
+                  speaker: 'patient' as const,
+                  content: msg.content,
+                  timestamp: msg.timestamp
+                }))}
+                patientInfo={patientInfo}
+                onSaveDiagnosis={handleSaveDiagnosis}
+              />
+            )}
           </div>
-
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Stats */}
@@ -243,7 +312,7 @@ export default function Index() {
                   <Activity className="w-5 h-5 text-medical-success" />
                   <div>
                     <p className="text-sm text-muted-foreground">오늘 진료</p>
-                    <p className="text-xl font-semibold text-foreground">0</p>
+                    <p className="text-xl font-semibold text-foreground">{todayCount}</p>
                   </div>
                 </div>
               </div>
@@ -252,7 +321,7 @@ export default function Index() {
                   <FileText className="w-5 h-5 text-medical-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">총 기록</p>
-                    <p className="text-xl font-semibold text-foreground">0</p>
+                    <p className="text-xl font-semibold text-foreground">{totalCount}</p>
                   </div>
                 </div>
               </div>
@@ -261,7 +330,26 @@ export default function Index() {
             {/* Patient History */}
             <div className="p-4 rounded-lg bg-card border border-border">
               <h3 className="text-lg font-semibold mb-4">최근 환자 기록</h3>
-              <p className="text-muted-foreground text-sm">아직 진료 기록이 없습니다.</p>
+              {recentRecords.length > 0 ? (
+                <div className="space-y-3">
+                  {recentRecords.map((record) => (
+                    <div key={record.id} className="bg-background border rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-sm">{record.patient_name}</h4>
+                        <span className="text-xs text-muted-foreground">
+                          {record.patient_age}세
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>대화 {record.conversation.length}개</span>
+                        <span>{new Date(record.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">아직 진료 기록이 없습니다.</p>
+              )}
             </div>
           </div>
         </div>
