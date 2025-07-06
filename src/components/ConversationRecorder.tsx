@@ -205,8 +205,8 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
                     variant="outline"
                     className="border-medical-warning text-medical-warning hover:bg-medical-warning/10"
                   >
-                    <MicOff className="w-4 h-4 mr-2" />
-                    일시 정지
+                    <Square className="w-4 h-4 mr-2" />
+                    대화기록종료
                   </Button>
                   <Button
                     onClick={handleEndSession}
