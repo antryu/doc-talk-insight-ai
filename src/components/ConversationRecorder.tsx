@@ -110,13 +110,28 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     if (isEndingSession) {
       console.log('진료 종료 대기 중 - 현재 메시지 수:', messages.length, '요청 시:', messagesAtEndRequest, 'isProcessing:', isProcessing, 'isRecording:', isRecording);
       
-      // 새로운 메시지가 추가되었거나 처리가 완료되었으면 종료
-      if (messages.length > messagesAtEndRequest || (!isRecording && !isProcessing)) {
-        console.log('=== 진료 종료 조건 충족! 종료 실행 ===');
+      // 새로운 메시지가 추가되었으면 즉시 종료
+      if (messages.length > messagesAtEndRequest) {
+        console.log('=== 새 메시지 감지됨! 진료 종료 실행 ===');
         console.log('최종 메시지들:', messages);
         
         setIsEndingSession(false);
         onEndRecording([...messages]);
+      } 
+      // 처리가 완료되었지만 새 메시지가 없으면 3초 더 대기
+      else if (!isRecording && !isProcessing) {
+        console.log('=== 음성 처리 완료, 3초 더 대기 중... ===');
+        
+        const timeoutId = setTimeout(() => {
+          if (isEndingSession) { // 아직 대기 중이면 종료
+            console.log('=== 대기 시간 완료, 진료 종료 실행 ===');
+            console.log('최종 메시지들:', messages);
+            setIsEndingSession(false);
+            onEndRecording([...messages]);
+          }
+        }, 3000);
+        
+        return () => clearTimeout(timeoutId);
       }
     }
   }, [messages, isEndingSession, messagesAtEndRequest, isProcessing, isRecording, onEndRecording]);
