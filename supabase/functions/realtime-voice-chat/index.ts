@@ -15,91 +15,89 @@ serve(async (req) => {
   const upgradeHeader = headers.get("upgrade") || "";
 
   if (upgradeHeader.toLowerCase() !== "websocket") {
-    console.log('Non-WebSocket request received');
     return new Response("Expected WebSocket connection", { status: 400 });
   }
 
-  console.log('WebSocket upgrade request received');
   const { socket, response } = Deno.upgradeWebSocket(req);
   
   let openAISocket: WebSocket | null = null;
-  let sessionConfigured = false;
+  let connectionAttempts = 0;
+  const maxRetries = 3;
 
-  socket.onopen = async () => {
-    console.log('Client WebSocket connected successfully');
-    
+  const connectToOpenAI = async () => {
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY environment variable not found');
+      console.error('OPENAI_API_KEY not found');
       socket.close(4000, 'Server configuration error');
       return;
     }
 
-    console.log('Attempting to connect to OpenAI Realtime API...');
-    
+    connectionAttempts++;
+    console.log(`OpenAI connection attempt ${connectionAttempts}/${maxRetries}`);
+
     try {
-      // OpenAI Realtime API requires specific WebSocket subprotocols
-      // Use the correct format for authentication
+      // Use a more direct approach - connect without subprotocols first
       const wsUrl = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01`;
-      const protocols = [
-        'realtime',
-        `openai-insecure-api-key.${openAIApiKey}`,
-        'openai-beta.realtime=v1'
-      ];
       
-      openAISocket = new WebSocket(wsUrl, protocols);
+      // Create WebSocket with manual header injection attempt  
+      openAISocket = new WebSocket(wsUrl);
 
       openAISocket.onopen = () => {
-        console.log('OpenAI WebSocket connected successfully');
+        console.log('OpenAI WebSocket connected - sending auth');
         
-        // Send additional authentication if needed
-        try {
-          const authEvent = {
-            type: 'session.update',
-            session: {
-              modalities: ['text', 'audio'],
-              instructions: '당신은 한국어로 대화하는 의료 진료 보조 AI입니다. 환자의 증상을 듣고 간단히 응답해주세요. 친근하고 전문적으로 대화하되, 진단은 하지 말고 증상 청취에 집중해주세요.',
-              voice: 'alloy',
-              input_audio_format: 'pcm16',
-              output_audio_format: 'pcm16',
-              input_audio_transcription: {
-                model: 'whisper-1'
-              },
-              turn_detection: {
-                type: 'server_vad',
-                threshold: 0.5,
-                prefix_padding_ms: 300,
-                silence_duration_ms: 1000
-              },
-              temperature: 0.7,
-              max_response_output_tokens: 500
-            }
-          };
-          
-          openAISocket?.send(JSON.stringify(authEvent));
-          console.log('Session configuration sent to OpenAI');
-          sessionConfigured = true;
-        } catch (error) {
-          console.error('Failed to send session configuration:', error);
+        // Send authentication as first message after connection
+        const authMessage = {
+          type: 'session.update',
+          session: {
+            modalities: ['text', 'audio'],
+            instructions: '당신은 한국어로 대화하는 의료 진료 보조 AI입니다. 환자의 증상을 듣고 간단히 응답해주세요.',
+            voice: 'alloy',
+            input_audio_format: 'pcm16',
+            output_audio_format: 'pcm16',
+            input_audio_transcription: { model: 'whisper-1' },
+            turn_detection: {
+              type: 'server_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 1000
+            },
+            temperature: 0.7
+          },
+          authorization: `Bearer ${openAIApiKey}`,
+          'openai-beta': 'realtime=v1'
+        };
+
+        if (openAISocket?.readyState === WebSocket.OPEN) {
+          openAISocket.send(JSON.stringify(authMessage));
+          console.log('Auth message sent to OpenAI');
         }
       };
 
       openAISocket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('Received from OpenAI:', data.type);
-
-          // Forward all messages to client
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify(data));
+        const data = JSON.parse(event.data);
+        console.log('OpenAI message:', data.type);
+        
+        // Handle authentication errors by retrying with different method
+        if (data.type === 'error' && data.error?.code === 'missing_beta_header') {
+          console.log('Auth failed, trying alternative method...');
+          openAISocket?.close();
+          
+          if (connectionAttempts < maxRetries) {
+            setTimeout(() => connectWithAlternativeMethod(), 1000);
+          } else {
+            socket.close(4003, 'Authentication failed after retries');
           }
-        } catch (error) {
-          console.error('Error processing OpenAI message:', error);
+          return;
+        }
+
+        // Forward successful messages to client
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(data));
         }
       };
 
       openAISocket.onclose = (event) => {
-        console.log('OpenAI WebSocket closed:', event.code, event.reason);
+        console.log(`OpenAI closed: ${event.code} - ${event.reason}`);
         if (socket.readyState === WebSocket.OPEN) {
           socket.close(event.code, event.reason);
         }
@@ -107,38 +105,99 @@ serve(async (req) => {
 
       openAISocket.onerror = (error) => {
         console.error('OpenAI WebSocket error:', error);
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.close(4001, 'OpenAI connection error');
+        if (connectionAttempts < maxRetries) {
+          setTimeout(() => connectWithAlternativeMethod(), 2000);
+        } else {
+          socket.close(4001, 'Connection failed');
         }
       };
 
     } catch (error) {
-      console.error('Failed to connect to OpenAI:', error);
-      socket.close(4002, 'Failed to connect to OpenAI');
+      console.error(`Connection attempt ${connectionAttempts} failed:`, error);
+      if (connectionAttempts < maxRetries) {
+        setTimeout(() => connectWithAlternativeMethod(), 2000);
+      } else {
+        socket.close(4002, 'Max retries exceeded');
+      }
     }
+  };
+
+  const connectWithAlternativeMethod = async () => {
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log('Trying alternative connection method...');
+
+    try {
+      // Try the documented subprotocol method
+      const wsUrl = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01`;
+      openAISocket = new WebSocket(wsUrl, [`realtime`, `openai-insecure-api-key.${openAIApiKey}`]);
+
+      openAISocket.onopen = () => {
+        console.log('Alternative method connected successfully');
+      };
+
+      openAISocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('Alternative method - OpenAI message:', data.type);
+
+        if (data.type === 'session.created') {
+          // Send session update after session is created
+          const sessionUpdate = {
+            type: 'session.update',
+            session: {
+              modalities: ['text', 'audio'],
+              instructions: '당신은 한국어로 대화하는 의료 진료 보조 AI입니다.',
+              voice: 'alloy',
+              input_audio_format: 'pcm16',
+              output_audio_format: 'pcm16',
+              input_audio_transcription: { model: 'whisper-1' },
+              turn_detection: {
+                type: 'server_vad',
+                threshold: 0.5,
+                prefix_padding_ms: 300,
+                silence_duration_ms: 1000
+              }
+            }
+          };
+          openAISocket?.send(JSON.stringify(sessionUpdate));
+        }
+
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(data));
+        }
+      };
+
+      openAISocket.onclose = (event) => {
+        console.log(`Alternative method closed: ${event.code}`);
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.close(event.code, event.reason);
+        }
+      };
+
+      openAISocket.onerror = (error) => {
+        console.error('Alternative method error:', error);
+        socket.close(4004, 'Alternative method failed');
+      };
+
+    } catch (error) {
+      console.error('Alternative method failed:', error);
+      socket.close(4005, 'All connection methods failed');
+    }
+  };
+
+  socket.onopen = () => {
+    console.log('Client connected, initializing OpenAI connection...');
+    connectToOpenAI();
   };
 
   socket.onmessage = (event) => {
-    if (openAISocket && openAISocket.readyState === WebSocket.OPEN) {
-      console.log('Forwarding client message to OpenAI');
+    if (openAISocket?.readyState === WebSocket.OPEN) {
       openAISocket.send(event.data);
-    } else {
-      console.log('OpenAI socket not ready, dropping message');
     }
   };
 
-  socket.onclose = (event) => {
-    console.log('Client WebSocket closed:', event.code, event.reason);
-    if (openAISocket) {
-      openAISocket.close();
-    }
-  };
-
-  socket.onerror = (error) => {
-    console.error('Client WebSocket error:', error);
-    if (openAISocket) {
-      openAISocket.close();
-    }
+  socket.onclose = () => {
+    console.log('Client disconnected');
+    openAISocket?.close();
   };
 
   return response;
