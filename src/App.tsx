@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "./contexts/LocalAuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import PatientHistory from "./pages/PatientHistory";
+import PatientRecordDetail from "./pages/PatientRecordDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -34,6 +36,22 @@ function AuthenticatedApp() {
         element={
           <ProtectedRoute>
             <Index />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/patient-history" 
+        element={
+          <ProtectedRoute>
+            <PatientHistory />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/patient-record/:recordId" 
+        element={
+          <ProtectedRoute>
+            <PatientRecordDetail />
           </ProtectedRoute>
         } 
       />

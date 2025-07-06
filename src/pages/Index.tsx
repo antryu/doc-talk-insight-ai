@@ -1,8 +1,10 @@
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
+import { Badge } from "@/components/ui/badge";
+import {
   Sheet, 
   SheetContent, 
   SheetDescription, 
@@ -26,7 +28,8 @@ import {
   User,
   Menu,
   Settings,
-  Brain
+  Brain,
+  History
 } from "lucide-react";
 
 interface PatientInfo {
@@ -43,6 +46,7 @@ interface Message {
 
 export default function Index() {
   const [currentStep, setCurrentStep] = useState<'registration' | 'recording' | 'analysis' | 'diagnosis'>('registration');
+  const [currentRecordId, setCurrentRecordId] = useState<string | null>(null);
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
   const [recentRecords, setRecentRecords] = useState<PatientRecord[]>([]);
@@ -65,13 +69,14 @@ export default function Index() {
     
     try {
       // IndexedDB에 진료 기록 저장
-      await db.createPatientRecord(
+      const record = await db.createPatientRecord(
         user.id,
         patientInfo.name,
         patientInfo.age,
         messages
       );
       
+      setCurrentRecordId(record.id); // 현재 기록 ID 저장
       setConversation(messages);
       setCurrentStep('analysis');
       toast({
@@ -92,6 +97,7 @@ export default function Index() {
     setCurrentStep('registration');
     setPatientInfo(null);
     setConversation([]);
+    setCurrentRecordId(null); // 현재 기록 ID 초기화
     loadPatientRecords(); // 새 진료 시작 시 기록 새로고침
   };
 
@@ -120,10 +126,22 @@ export default function Index() {
   };
 
   const handleSaveDiagnosis = async (diagnoses: any[]) => {
-    toast({
-      title: "진단 결과 저장",
-      description: "AI 진단 분석 결과가 저장되었습니다.",
-    });
+    if (currentRecordId) {
+      try {
+        await db.updatePatientRecordWithDiagnoses(currentRecordId, diagnoses);
+        toast({
+          title: "진단 결과 저장",
+          description: "AI 진단 분석 결과가 저장되었습니다.",
+        });
+      } catch (error) {
+        console.error('Failed to save diagnosis:', error);
+        toast({
+          title: "오류", 
+          description: "진단 결과 저장 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+      }
+    }
     loadPatientRecords(); // 기록 새로고침
   };
 
@@ -198,6 +216,15 @@ export default function Index() {
                     <Users className="w-4 h-4 mr-2" />
                     새 진료 시작
                   </Button>
+                  <Link to="/patient-history" className="block">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                    >
+                      <History className="w-4 h-4 mr-2" />
+                      환자 기록 관리
+                    </Button>
+                  </Link>
                   <Button
                     variant="outline"
                     className="w-full justify-start text-red-600 hover:text-red-700"
@@ -330,22 +357,42 @@ export default function Index() {
 
             {/* Patient History */}
             <div className="p-4 rounded-lg bg-card border border-border">
-              <h3 className="text-lg font-semibold mb-4">최근 환자 기록</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">최근 환자 기록</h3>
+                <Link to="/patient-history">
+                  <Button variant="outline" size="sm">
+                    전체 보기
+                  </Button>
+                </Link>
+              </div>
               {recentRecords.length > 0 ? (
                 <div className="space-y-3">
                   {recentRecords.map((record) => (
-                    <div key={record.id} className="bg-background border rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm">{record.patient_name}</h4>
-                        <span className="text-xs text-muted-foreground">
-                          {record.patient_age}세
-                        </span>
+                    <Link 
+                      key={record.id} 
+                      to={`/patient-record/${record.id}`}
+                      className="block hover:bg-muted/50 rounded-lg transition-colors"
+                    >
+                      <div className="bg-background border rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-sm">{record.patient_name}</h4>
+                          <span className="text-xs text-muted-foreground">
+                            {record.patient_age}세
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center space-x-2">
+                            <span>대화 {record.conversation.length}개</span>
+                            {record.diagnoses && record.diagnoses.length > 0 && (
+                              <Badge className="bg-medical-success text-white text-xs px-1 py-0">
+                                진단완료
+                              </Badge>
+                            )}
+                          </div>
+                          <span>{new Date(record.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>대화 {record.conversation.length}개</span>
-                        <span>{new Date(record.created_at).toLocaleDateString()}</span>
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (

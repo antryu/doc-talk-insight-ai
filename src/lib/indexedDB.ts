@@ -13,8 +13,17 @@ export interface PatientRecord {
   patient_name: string;
   patient_age: string;
   conversation: ConversationMessage[];
+  diagnoses?: Diagnosis[];
   created_at: Date;
   updated_at: Date;
+}
+
+export interface Diagnosis {
+  disease: string;
+  probability: number;
+  symptoms: string[];
+  recommendation: string;
+  analyzed_at: Date;
 }
 
 export interface ConversationMessage {
@@ -199,6 +208,47 @@ class IndexedDBManager {
       const request = index.get(userId);
 
       request.onsuccess = () => resolve(request.result as Settings || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async updatePatientRecordWithDiagnoses(recordId: string, diagnoses: Diagnosis[]): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['patient_records'], 'readwrite');
+      const store = transaction.objectStore('patient_records');
+      const request = store.get(recordId);
+
+      request.onsuccess = () => {
+        const record = request.result as PatientRecord;
+        if (record) {
+          record.diagnoses = diagnoses.map(d => ({
+            ...d,
+            analyzed_at: new Date()
+          }));
+          record.updated_at = new Date();
+          
+          const updateRequest = store.put(record);
+          updateRequest.onsuccess = () => resolve();
+          updateRequest.onerror = () => reject(updateRequest.error);
+        } else {
+          reject(new Error('Record not found'));
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getPatientRecord(recordId: string): Promise<PatientRecord | null> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['patient_records'], 'readonly');
+      const store = transaction.objectStore('patient_records');
+      const request = store.get(recordId);
+
+      request.onsuccess = () => resolve(request.result as PatientRecord || null);
       request.onerror = () => reject(request.error);
     });
   }
