@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mic, MicOff, Square, User, Loader2, Wifi, WifiOff } from "lucide-react";
-import { useRealtimeVoiceChat } from "@/hooks/useRealtimeVoiceChat";
+import { useSimpleVoiceChat } from "@/hooks/useSimpleVoiceChat";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -50,70 +50,51 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   };
 
   const {
-    isConnected,
     isRecording,
-    connectWebSocket,
+    isProcessing,
     startRecording,
-    stopRecording,
-    disconnect
-  } = useRealtimeVoiceChat({
+    stopRecording
+  } = useSimpleVoiceChat({
     onTranscription: handleTranscription,
     onError: handleError,
   });
 
   const handleStartConversation = async () => {
     try {
-      if (!isConnected) {
-        console.log('Connecting to realtime voice chat...');
-        await connectWebSocket();
-        // 연결 대기
-        setTimeout(async () => {
-          await startRecording();
-          setConversationStarted(true);
-          toast({
-            title: "실시간 대화 시작",
-            description: "AI와 실시간 음성 대화가 시작되었습니다.",
-          });
-        }, 2000);
-      } else {
-        await startRecording();
-        setConversationStarted(true);
-        toast({
-          title: "실시간 대화 시작", 
-          description: "AI와 실시간 음성 대화가 시작되었습니다.",
-        });
-      }
+      console.log('Starting simple voice recording...');
+      await startRecording();
+      setConversationStarted(true);
+      toast({
+        title: "음성 녹음 시작",
+        description: "음성을 녹음하여 AI가 응답합니다.",
+      });
     } catch (error) {
       console.error('Failed to start conversation:', error);
-      handleError('대화를 시작할 수 없습니다.');
+      handleError('녹음을 시작할 수 없습니다.');
     }
   };
 
   const handleStopRecording = () => {
     stopRecording();
     toast({
-      title: "음성 일시정지",
-      description: "음성 인식이 일시정지되었습니다.",
+      title: "음성 처리 중",
+      description: "녹음된 음성을 분석하고 있습니다...",
     });
   };
 
   const handleEndSession = () => {
     console.log('=== 진료종료 요청 ===');
     console.log('현재 메시지 수:', messages.length);
-    console.log('연결 상태:', isConnected);
-    console.log('녹음 중:', isRecording);
     
     if (isRecording) {
       stopRecording();
     }
     
-    disconnect();
-    
-    // 3초 후 진료 종료 (실시간 전송 완료 대기)
+    // 1초 후 진료 종료
     setTimeout(() => {
       console.log('진료 종료 - 최종 메시지 수:', messages.length);
       onEndRecording([...messages]);
-    }, 3000);
+    }, 1000);
   };
 
   // 스크롤 자동 이동
@@ -139,13 +120,16 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-medical-success text-white" : "bg-muted text-muted-foreground"}>
-                {isConnected ? <Wifi className="w-3 h-3 mr-1" /> : <WifiOff className="w-3 h-3 mr-1" />}
-                {isConnected ? "연결됨" : "연결 안됨"}
+              <Badge variant={isRecording ? "default" : "secondary"} className={isRecording ? "bg-medical-success text-white" : "bg-muted text-muted-foreground"}>
+                {isRecording ? <Mic className="w-3 h-3 mr-1" /> : <MicOff className="w-3 h-3 mr-1" />}
+                {isRecording ? "녹음 중" : "대기 중"}
               </Badge>
-              <Badge variant={isRecording ? "default" : "secondary"} className="bg-medical-primary text-white">
-                {isRecording ? "🔴 실시간 대화 중" : "대기 중"}
-              </Badge>
+              {isProcessing && (
+                <Badge variant="default" className="bg-medical-warning text-white">
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  처리 중
+                </Badge>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -166,7 +150,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
                 </p>
                 <Button
                   onClick={handleStartConversation}
-                  disabled={!isConnected && conversationStarted}
+                  disabled={isProcessing}
                   className="bg-medical-success hover:bg-medical-success/90 text-white px-8 py-3"
                 >
                   <Mic className="w-4 h-4 mr-2" />
@@ -208,7 +192,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
               {!isRecording ? (
                 <Button
                   onClick={handleStartConversation}
-                  disabled={!isConnected}
+                  disabled={isProcessing}
                   className="bg-medical-success hover:bg-medical-success/90 text-white px-6 py-3"
                 >
                   <Mic className="w-4 h-4 mr-2" />
@@ -235,10 +219,10 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
               )}
             </div>
 
-            {!isConnected && conversationStarted && (
+            {isProcessing && (
               <div className="flex items-center justify-center mt-4 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                실시간 음성 연결 중...
+                음성 처리 중...
               </div>
             )}
           </CardContent>
