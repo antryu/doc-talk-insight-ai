@@ -190,32 +190,32 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
 
             <div className="flex items-center justify-center space-x-4 mt-6">
               {!isRecording ? (
-                <Button
-                  onClick={handleStartConversation}
-                  disabled={isProcessing}
-                  className="bg-medical-success hover:bg-medical-success/90 text-white px-6 py-3"
-                >
-                  <Mic className="w-4 h-4 mr-2" />
-                  대화 재개
-                </Button>
-              ) : (
                 <div className="flex space-x-3">
                   <Button
-                    onClick={handleStopRecording}
-                    variant="outline"
-                    className="border-medical-warning text-medical-warning hover:bg-medical-warning/10"
+                    onClick={handleStartConversation}
+                    disabled={isProcessing}
+                    className="bg-medical-success hover:bg-medical-success/90 text-white px-6 py-3"
                   >
-                    <Square className="w-4 h-4 mr-2" />
-                    대화기록종료
+                    <Mic className="w-4 h-4 mr-2" />
+                    대화 재개
                   </Button>
                   <Button
                     onClick={handleEndSession}
-                    className="bg-medical-warning hover:bg-medical-warning/90 text-white"
+                    className="bg-medical-warning hover:bg-medical-warning/90 text-white px-6 py-3"
                   >
                     <Square className="w-4 h-4 mr-2" />
                     진료 종료
                   </Button>
                 </div>
+              ) : (
+                <Button
+                  onClick={handleStopRecording}
+                  variant="outline"
+                  className="border-medical-warning text-medical-warning hover:bg-medical-warning/10 px-6 py-3"
+                >
+                  <Square className="w-4 h-4 mr-2" />
+                  대화기록종료
+                </Button>
               )}
             </div>
 
