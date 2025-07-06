@@ -23,9 +23,10 @@ interface DiagnosisAnalysisProps {
   messages: Message[];
   patientInfo: { name: string; age: string };
   onSaveDiagnosis: (diagnoses: Diagnosis[]) => void;
+  onBackToHome: () => void;
 }
 
-export default function DiagnosisAnalysis({ messages, patientInfo, onSaveDiagnosis }: DiagnosisAnalysisProps) {
+export default function DiagnosisAnalysis({ messages, patientInfo, onSaveDiagnosis, onBackToHome }: DiagnosisAnalysisProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [analysisComplete, setAnalysisComplete] = useState(false);
@@ -192,13 +193,20 @@ export default function DiagnosisAnalysis({ messages, patientInfo, onSaveDiagnos
                 ))}
               </ScrollArea>
               
-              <div className="flex justify-center pt-4 border-t">
+              <div className="flex justify-center gap-4 pt-4 border-t">
                 <Button
                   onClick={handleSaveResults}
                   className="bg-medical-success hover:bg-medical-success/90 text-white px-6"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   진단 결과 저장
+                </Button>
+                <Button
+                  onClick={onBackToHome}
+                  variant="outline"
+                  className="px-6"
+                >
+                  처음으로 돌아가기
                 </Button>
               </div>
             </div>

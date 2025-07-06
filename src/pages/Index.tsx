@@ -300,6 +300,7 @@ export default function Index() {
                 }))}
                 patientInfo={patientInfo}
                 onSaveDiagnosis={handleSaveDiagnosis}
+                onBackToHome={handleStartNewConsultation}
               />
             )}
           </div>
