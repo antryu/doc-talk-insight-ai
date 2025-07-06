@@ -15,36 +15,38 @@ serve(async (req) => {
   const upgradeHeader = headers.get("upgrade") || "";
 
   if (upgradeHeader.toLowerCase() !== "websocket") {
+    console.log('Non-WebSocket request received');
     return new Response("Expected WebSocket connection", { status: 400 });
   }
 
+  console.log('WebSocket upgrade request received');
   const { socket, response } = Deno.upgradeWebSocket(req);
-  
-  console.log('WebSocket connection established');
   
   let openAISocket: WebSocket | null = null;
   let sessionConfigured = false;
 
   socket.onopen = () => {
-    console.log('Client WebSocket connected');
+    console.log('Client WebSocket connected successfully');
     
     // OpenAI Realtime API 연결
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      console.error('OpenAI API key not found');
+      console.error('OPENAI_API_KEY environment variable not found');
       socket.close(4000, 'Server configuration error');
       return;
     }
 
+    console.log('Attempting to connect to OpenAI Realtime API...');
+    
     try {
-      // OpenAI Realtime API는 특별한 서브프로토콜 방식을 사용합니다
+      // OpenAI Realtime API 연결 - 올바른 인증 방법 사용
       openAISocket = new WebSocket(
         `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01`,
-        [`realtime`, `openai-insecure-api-key.${openAIApiKey}`, `openai-beta.realtime=v1`]
+        ['realtime', `openai-insecure-api-key.${openAIApiKey}`]
       );
 
       openAISocket.onopen = () => {
-        console.log('OpenAI WebSocket connected');
+        console.log('OpenAI WebSocket connected successfully');
       };
 
       openAISocket.onmessage = (event) => {
