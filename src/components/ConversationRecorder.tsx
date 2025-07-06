@@ -86,18 +86,40 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     console.log('녹음 중:', isRecording);
     console.log('처리 중:', isProcessing);
     
-    // 녹음 중지 후 현재 메시지를 즉시 전달
-    if (isRecording) {
-      console.log('녹음 중지 중...');
-      stopRecording();
+    if (isRecording || isProcessing) {
+      // 녹음 중이거나 처리 중이면 종료 대기 상태로 설정
+      setIsEndingSession(true);
+      setMessagesAtEndRequest(messages.length);
+      
+      if (isRecording) {
+        console.log('녹음 중지 중...');
+        stopRecording();
+      }
+      
+      console.log('음성 인식 완료 대기 중...');
+      
+    } else {
+      // 녹음도 처리도 안 하고 있으면 바로 종료
+      console.log('바로 진료 종료');
+      onEndRecording([...messages]);
     }
-    
-    // 조금 더 기다린 후 현재 메시지로 진료 종료
-    setTimeout(() => {
-      console.log('진료 종료 - 최종 메시지 수:', messages.length);
-      onEndRecording([...messages]); // 현재 메시지 배열 복사해서 전달
-    }, 1000); // 1초 대기
   };
+
+  // 진료 종료 대기 중 처리 완료 감지
+  useEffect(() => {
+    if (isEndingSession) {
+      console.log('진료 종료 대기 중 - 현재 메시지 수:', messages.length, '요청 시:', messagesAtEndRequest, 'isProcessing:', isProcessing, 'isRecording:', isRecording);
+      
+      // 새로운 메시지가 추가되었거나 처리가 완료되었으면 종료
+      if (messages.length > messagesAtEndRequest || (!isRecording && !isProcessing)) {
+        console.log('=== 진료 종료 조건 충족! 종료 실행 ===');
+        console.log('최종 메시지들:', messages);
+        
+        setIsEndingSession(false);
+        onEndRecording([...messages]);
+      }
+    }
+  }, [messages, isEndingSession, messagesAtEndRequest, isProcessing, isRecording, onEndRecording]);
 
   // 스크롤 자동 이동
   useEffect(() => {
