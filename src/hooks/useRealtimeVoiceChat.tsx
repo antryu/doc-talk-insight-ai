@@ -222,7 +222,7 @@ export const useRealtimeVoiceChat = ({ onTranscription, onError }: UseRealtimeVo
       console.log('Connecting to realtime voice chat...');
       
       // Use the correct WebSocket URL for Supabase Edge Function
-      wsRef.current = new WebSocket('wss://esnrwamfmjiwwftdiign.supabase.co/functions/v1/realtime-voice-chat');
+      wsRef.current = new WebSocket('wss://esnrwamfmjiwwftdiign.functions.supabase.co/realtime-voice-chat');
 
       wsRef.current.onopen = () => {
         console.log('WebSocket connected successfully');
