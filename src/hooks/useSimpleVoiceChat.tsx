@@ -122,7 +122,7 @@ export const useSimpleVoiceChat = ({ onTranscription, onError }: UseSimpleVoiceC
       console.log('Transcription successful:', userText);
       onTranscription(userText);
 
-      // Get AI response
+      // Get AI response (for real-time conversation only, not recorded)
       const { data: aiResponseData, error: aiError } = await supabase.functions.invoke('simple-chat', {
         body: { 
           text: userText
@@ -130,13 +130,15 @@ export const useSimpleVoiceChat = ({ onTranscription, onError }: UseSimpleVoiceC
       });
 
       if (aiError) {
-        throw new Error(`AI 응답 오류: ${aiError.message}`);
+        console.log('AI 응답 오류:', aiError.message);
+        // AI 응답 실패해도 녹음은 정상 진행
+        return;
       }
 
       const aiResponse = aiResponseData.response?.trim();
       if (aiResponse) {
-        console.log('AI response received:', aiResponse);
-        onTranscription(aiResponse);
+        console.log('AI response received (not recorded):', aiResponse);
+        // AI 응답은 콘솔에만 표시하고 기록에는 저장하지 않음
       }
 
     } catch (error) {
