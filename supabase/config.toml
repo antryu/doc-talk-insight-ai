@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.realtime-voice-chat]
 verify_jwt = false
+
+[functions.simple-chat]
+verify_jwt = false

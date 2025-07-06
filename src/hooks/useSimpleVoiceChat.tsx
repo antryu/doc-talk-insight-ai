@@ -114,7 +114,7 @@ export const useSimpleVoiceChat = ({ onTranscription, onError }: UseSimpleVoiceC
       onTranscription(`환자: ${userText}`);
 
       // Get AI response
-      const { data: aiResponseData, error: aiError } = await supabase.functions.invoke('diagnosis-analysis', {
+      const { data: aiResponseData, error: aiError } = await supabase.functions.invoke('simple-chat', {
         body: { 
           text: `환자가 말한 내용: "${userText}". 이에 대해 의료진으로서 간단히 응답해주세요. 추가 질문이나 조언을 해주세요.`
         }
