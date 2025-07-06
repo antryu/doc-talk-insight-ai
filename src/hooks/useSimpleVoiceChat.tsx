@@ -90,9 +90,18 @@ export const useSimpleVoiceChat = ({ onTranscription, onError }: UseSimpleVoiceC
         throw new Error('녹음된 오디오가 비어있습니다');
       }
 
-      // Convert to base64
+      // Convert to base64 safely (avoid stack overflow for large files)
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const uint8Array = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 0x8000; // 32KB chunks to avoid stack overflow
+      
+      for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
+        binary += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      
+      const base64Audio = btoa(binary);
       
       console.log('Audio converted to base64, calling voice-to-text function...');
 
