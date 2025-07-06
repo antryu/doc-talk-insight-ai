@@ -25,10 +25,9 @@ serve(async (req) => {
   let openAISocket: WebSocket | null = null;
   let sessionConfigured = false;
 
-  socket.onopen = () => {
+  socket.onopen = async () => {
     console.log('Client WebSocket connected successfully');
     
-    // OpenAI Realtime API 연결
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       console.error('OPENAI_API_KEY environment variable not found');
@@ -39,25 +38,23 @@ serve(async (req) => {
     console.log('Attempting to connect to OpenAI Realtime API...');
     
     try {
-      // OpenAI Realtime API 연결 - 올바른 인증 방법 사용
-      openAISocket = new WebSocket(
-        `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01`,
-        ['realtime', `openai-insecure-api-key.${openAIApiKey}`]
-      );
+      // OpenAI Realtime API requires specific WebSocket subprotocols
+      // Use the correct format for authentication
+      const wsUrl = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01`;
+      const protocols = [
+        'realtime',
+        `openai-insecure-api-key.${openAIApiKey}`,
+        'openai-beta.realtime=v1'
+      ];
+      
+      openAISocket = new WebSocket(wsUrl, protocols);
 
       openAISocket.onopen = () => {
         console.log('OpenAI WebSocket connected successfully');
-      };
-
-      openAISocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log('Received from OpenAI:', data.type);
-
-        // 세션 생성 완료 시 설정 업데이트
-        if (data.type === 'session.created' && !sessionConfigured) {
-          console.log('Session created, sending configuration...');
-          
-          const sessionUpdate = {
+        
+        // Send additional authentication if needed
+        try {
+          const authEvent = {
             type: 'session.update',
             session: {
               modalities: ['text', 'audio'],
@@ -79,22 +76,40 @@ serve(async (req) => {
             }
           };
           
-          openAISocket?.send(JSON.stringify(sessionUpdate));
+          openAISocket?.send(JSON.stringify(authEvent));
+          console.log('Session configuration sent to OpenAI');
           sessionConfigured = true;
+        } catch (error) {
+          console.error('Failed to send session configuration:', error);
         }
+      };
 
-        // 클라이언트로 메시지 전달
-        socket.send(JSON.stringify(data));
+      openAISocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received from OpenAI:', data.type);
+
+          // Forward all messages to client
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(data));
+          }
+        } catch (error) {
+          console.error('Error processing OpenAI message:', error);
+        }
       };
 
       openAISocket.onclose = (event) => {
         console.log('OpenAI WebSocket closed:', event.code, event.reason);
-        socket.close(event.code, event.reason);
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.close(event.code, event.reason);
+        }
       };
 
       openAISocket.onerror = (error) => {
         console.error('OpenAI WebSocket error:', error);
-        socket.close(4001, 'OpenAI connection error');
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.close(4001, 'OpenAI connection error');
+        }
       };
 
     } catch (error) {
