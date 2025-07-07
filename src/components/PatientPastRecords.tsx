@@ -23,9 +23,10 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
 
   useEffect(() => {
     if (user && patientName) {
+      console.log('=== useEffect 실행 ===', { patientName, currentRecordId, userId: user.id });
       loadPatientHistory();
     }
-  }, [patientName, user]);
+  }, [patientName, currentRecordId, user?.id]); // 의존성 배열 최적화
 
   const loadPatientHistory = async () => {
     if (!user) return;
@@ -44,8 +45,9 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
         .eq('patient_name', patientName) // 같은 환자명
         .order('created_at', { ascending: false });
       
-      // 현재 진료 기록이 있으면 제외
-      if (currentRecordId) {
+      // 현재 진료 기록이 있고 유효한 UUID인 경우에만 제외
+      if (currentRecordId && currentRecordId.trim() !== '') {
+        console.log('현재 진료 기록 제외:', currentRecordId);
         query.neq('id', currentRecordId);
       }
       
