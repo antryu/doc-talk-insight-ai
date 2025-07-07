@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, MessageSquare, Brain, Calendar } from "lucide-react";
+import { ArrowLeft, User, MessageSquare, Brain, Calendar, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 
@@ -147,11 +147,7 @@ export default function PatientRecordDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="bg-background border rounded-lg p-4">
-                  <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(record.medical_law_review, null, 2)}</pre>
-                </div>
-              </div>
+              <MedicalLawReview data={record.medical_law_review} />
             </CardContent>
           </Card>
         )}
@@ -186,6 +182,148 @@ export default function PatientRecordDetail() {
           </CardContent>
         </Card>
       </main>
+    </div>
+  );
+}
+
+// 의료법 검토 결과 컴포넌트
+interface MedicalLawReviewProps {
+  data: any;
+}
+
+function MedicalLawReview({ data }: MedicalLawReviewProps) {
+  // JSON 데이터 파싱
+  let reviewData;
+  try {
+    reviewData = typeof data === 'string' ? JSON.parse(data) : data;
+  } catch (error) {
+    reviewData = data;
+  }
+
+  // 검토 결과가 구조화된 데이터인지 확인
+  if (!reviewData || typeof reviewData !== 'object') {
+    return (
+      <div className="bg-background border rounded-lg p-4">
+        <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
+      </div>
+    );
+  }
+
+  // 위험도에 따른 아이콘과 색상
+  const getRiskLevel = (level: string) => {
+    switch (level?.toLowerCase()) {
+      case 'high':
+      case '높음':
+        return { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50', label: '높음' };
+      case 'medium':
+      case '보통':
+        return { icon: AlertTriangle, color: 'text-yellow-500', bg: 'bg-yellow-50', label: '보통' };
+      case 'low':
+      case '낮음':
+        return { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', label: '낮음' };
+      default:
+        return { icon: AlertTriangle, color: 'text-gray-500', bg: 'bg-gray-50', label: '미확인' };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 전체 요약 */}
+      {reviewData.summary && (
+        <div className="bg-medical-light/30 border rounded-lg p-4">
+          <h3 className="font-semibold text-foreground mb-2">검토 요약</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">{reviewData.summary}</p>
+        </div>
+      )}
+
+      {/* 위험도 평가 */}
+      {reviewData.riskLevel && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-foreground">위험도 평가</h3>
+          <div className="flex items-center gap-3">
+            {(() => {
+              const risk = getRiskLevel(reviewData.riskLevel);
+              const Icon = risk.icon;
+              return (
+                <>
+                  <div className={`p-2 rounded-full ${risk.bg}`}>
+                    <Icon className={`w-5 h-5 ${risk.color}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">{risk.label}</p>
+                    {reviewData.riskDescription && (
+                      <p className="text-sm text-muted-foreground">{reviewData.riskDescription}</p>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* 관련 의료법 조항 */}
+      {reviewData.relatedArticles && Array.isArray(reviewData.relatedArticles) && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-foreground">관련 의료법 조항</h3>
+          <div className="space-y-2">
+            {reviewData.relatedArticles.map((article: any, index: number) => (
+              <div key={index} className="bg-background border rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline">{article.articleNumber || `조항 ${index + 1}`}</Badge>
+                  {article.title && <span className="text-sm font-medium">{article.title}</span>}
+                </div>
+                {article.content && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{article.content}</p>
+                )}
+                {article.relevance && (
+                  <p className="text-xs text-muted-foreground mt-2">관련성: {article.relevance}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 권장 사항 */}
+      {reviewData.recommendations && Array.isArray(reviewData.recommendations) && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-foreground">권장 사항</h3>
+          <div className="space-y-2">
+            {reviewData.recommendations.map((recommendation: string, index: number) => (
+              <div key={index} className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-muted-foreground leading-relaxed">{recommendation}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 주의 사항 */}
+      {reviewData.warnings && Array.isArray(reviewData.warnings) && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-foreground">주의 사항</h3>
+          <div className="space-y-2">
+            {reviewData.warnings.map((warning: string, index: number) => (
+              <div key={index} className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-muted-foreground leading-relaxed">{warning}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 원본 데이터 (구조화되지 않은 경우) */}
+      {(!reviewData.summary && !reviewData.riskLevel && !reviewData.relatedArticles) && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-foreground">검토 내용</h3>
+          <div className="bg-background border rounded-lg p-4">
+            <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(reviewData, null, 2)}</pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
