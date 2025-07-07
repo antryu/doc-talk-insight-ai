@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,37 +11,12 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
-import { useAuth } from "@/contexts/LocalAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { db, type PatientRecord } from "@/lib/indexedDB";
-import PatientRegistration from "@/components/PatientRegistration";
-import ConversationRecorder from "@/components/ConversationRecorder";
-import DiagnosisAnalysis from "@/components/DiagnosisAnalysis";
-import SettingsDialog from "@/components/SettingsDialog";
-import { 
-  Stethoscope, 
-  Users, 
-  FileText, 
-  Activity, 
-  LogOut, 
-  User,
-  Menu,
-  Settings,
-  Brain,
-  History
-} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
 
-interface PatientInfo {
-  name: string;
-  age: string;
-  consent: boolean;
-}
-
-interface Message {
-  id: string;
-  content: string;
-  timestamp: Date;
-}
+type PatientRecord = Tables<'patient_records'>;
 
 export default function Index() {
   const [currentStep, setCurrentStep] = useState<'registration' | 'recording' | 'analysis' | 'diagnosis'>('registration');
@@ -67,37 +41,20 @@ export default function Index() {
   const handleEndRecording = async (messages: Message[]) => {
     if (!patientInfo || !user) return;
     
-    try {
-      // IndexedDB에 진료 기록 저장
-      const record = await db.createPatientRecord(
-        user.id,
-        patientInfo.name,
-        patientInfo.age,
-        messages
-      );
-      
-      setCurrentRecordId(record.id); // 현재 기록 ID 저장
-      setConversation(messages);
-      setCurrentStep('analysis');
-      toast({
-        title: "대화 기록 완료",
-        description: "진료 대화가 성공적으로 저장되었습니다.",
-      });
-    } catch (error) {
-      console.error('Failed to save patient record:', error);
-      toast({
-        title: "오류",
-        description: "진료 기록 저장 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    }
+    setCurrentRecordId(null);
+    setConversation(messages);
+    setCurrentStep('analysis');
+    toast({
+      title: "대화 기록 완료",
+      description: "진료 대화가 성공적으로 저장되었습니다.",
+    });
   };
 
   const handleStartNewConsultation = () => {
     setCurrentStep('registration');
     setPatientInfo(null);
     setConversation([]);
-    setCurrentRecordId(null); // 현재 기록 ID 초기화
+    setCurrentRecordId(null);
     loadPatientRecords(); // 새 진료 시작 시 기록 새로고침
   };
 
@@ -105,17 +62,26 @@ export default function Index() {
     if (!user) return;
     
     try {
-      const records = await db.getPatientRecords(user.id);
-      setRecentRecords(records.slice(0, 5)); // 최근 5개만 표시
-      setTotalCount(records.length);
-      
-      // 오늘 진료 수 계산
-      const today = new Date();
-      const todayRecords = records.filter(record => {
-        const recordDate = new Date(record.created_at);
-        return recordDate.toDateString() === today.toDateString();
-      });
-      setTodayCount(todayRecords.length);
+      const { data: records, error } = await supabase
+        .from('patient_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (records) {
+        setRecentRecords(records.slice(0, 5)); // 최근 5개만 표시
+        setTotalCount(records.length);
+        
+        // 오늘 진료 수 계산
+        const today = new Date();
+        const todayRecords = records.filter(record => {
+          const recordDate = new Date(record.created_at);
+          return recordDate.toDateString() === today.toDateString();
+        });
+        setTodayCount(todayRecords.length);
+      }
     } catch (error) {
       console.error('Failed to load patient records:', error);
     }
@@ -126,22 +92,11 @@ export default function Index() {
   };
 
   const handleSaveDiagnosis = async (diagnoses: any[]) => {
-    if (currentRecordId) {
-      try {
-        await db.updatePatientRecordWithDiagnoses(currentRecordId, diagnoses);
-        toast({
-          title: "진단 결과 저장",
-          description: "AI 진단 분석 결과가 저장되었습니다.",
-        });
-      } catch (error) {
-        console.error('Failed to save diagnosis:', error);
-        toast({
-          title: "오류", 
-          description: "진단 결과 저장 중 오류가 발생했습니다.",
-          variant: "destructive",
-        });
-      }
-    }
+    // 진단 결과는 데이터베이스에 이미 저장되어 있음
+    toast({
+      title: "진단 결과 저장",
+      description: "AI 진단 분석 결과가 저장되었습니다.",
+    });
     loadPatientRecords(); // 기록 새로고침
   };
 
@@ -161,8 +116,8 @@ export default function Index() {
   };
 
   const getUserInitials = () => {
-    if (user?.full_name) {
-      return user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase();
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase();
     }
     return user?.email?.[0]?.toUpperCase() || 'U';
   };
@@ -204,7 +159,7 @@ export default function Index() {
                     사용자 메뉴
                   </SheetTitle>
                   <SheetDescription>
-                    {user?.full_name || user?.email}
+                    {user?.user_metadata?.full_name || user?.email}
                   </SheetDescription>
                 </SheetHeader>
                 <div className="mt-6 space-y-4">
@@ -382,12 +337,7 @@ export default function Index() {
                         </div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <div className="flex items-center space-x-2">
-                            <span>대화 {record.conversation.length}개</span>
-                            {record.diagnoses && record.diagnoses.length > 0 && (
-                              <Badge className="bg-medical-success text-white text-xs px-1 py-0">
-                                진단완료
-                              </Badge>
-                            )}
+                            <span>대화 {Array.isArray(record.conversation_data) ? record.conversation_data.length : 0}개</span>
                           </div>
                           <span>{new Date(record.created_at).toLocaleDateString()}</span>
                         </div>

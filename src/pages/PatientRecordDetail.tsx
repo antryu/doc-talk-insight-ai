@@ -3,8 +3,10 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, MessageSquare, Brain, Calendar, CheckCircle, AlertCircle, FileText } from "lucide-react";
-import { db, type PatientRecord } from "@/lib/indexedDB";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
+
+type PatientRecord = Tables<'patient_records'>;
 
 export default function PatientRecordDetail() {
   const { recordId } = useParams<{ recordId: string }>();
@@ -19,25 +21,22 @@ export default function PatientRecordDetail() {
     if (!recordId) return;
     
     try {
-      const patientRecord = await db.getPatientRecord(recordId);
-      setRecord(patientRecord);
+      const { data: patientRecord, error } = await supabase
+        .from('patient_records')
+        .select('*')
+        .eq('id', recordId)
+        .single();
+
+      if (error) throw error;
+      
+      if (patientRecord) {
+        setRecord(patientRecord);
+      }
     } catch (error) {
       console.error('Failed to load patient record:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const getProbabilityColor = (probability: number) => {
-    if (probability >= 80) return "bg-medical-success";
-    if (probability >= 60) return "bg-medical-warning";
-    return "bg-muted";
-  };
-
-  const getProbabilityIcon = (probability: number) => {
-    if (probability >= 80) return <CheckCircle className="w-4 h-4" />;
-    if (probability >= 60) return <AlertCircle className="w-4 h-4" />;
-    return <FileText className="w-4 h-4" />;
   };
 
   if (loading) {
@@ -109,23 +108,23 @@ export default function PatientRecordDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {record.conversation.length > 0 ? (
+            {record.conversation_data && Array.isArray(record.conversation_data) && record.conversation_data.length > 0 ? (
               <div className="space-y-4">
-                {record.conversation.map((message, index) => (
-                  <div key={message.id} className="p-4 rounded-lg bg-medical-light/50 border">
+                {record.conversation_data.map((message, index) => (
+                  <div key={message.id || index} className="p-4 rounded-lg bg-medical-light/50 border">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-medium text-medical-primary">
                         #{index + 1} 음성인식 결과
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(message.timestamp).toLocaleTimeString()}
+                        {message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : ''}
                       </span>
                     </div>
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
                 ))}
                 <div className="mt-4 pt-3 border-t text-sm text-muted-foreground text-center">
-                  총 {record.conversation.length}개의 음성인식 결과가 기록되었습니다.
+                  총 {record.conversation_data.length}개의 음성인식 결과가 기록되었습니다.
                 </div>
               </div>
             ) : (
@@ -137,55 +136,20 @@ export default function PatientRecordDetail() {
           </CardContent>
         </Card>
 
-        {/* AI 진단 분석 결과 */}
-        {record.diagnoses && record.diagnoses.length > 0 && (
+        {/* 의료법 검토 결과 */}
+        {record.medical_law_review && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Brain className="w-5 h-5 text-medical-primary" />
-                <span>AI 진단 분석 결과</span>
+                <span>의료법 검토 결과</span>
               </CardTitle>
-              <div className="text-sm text-muted-foreground">
-                분석 일시: {new Date(record.diagnoses[0].analyzed_at).toLocaleString()}
-              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {record.diagnoses.map((diagnosis, index) => (
-                  <Card key={index} className="border border-border">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg flex items-center space-x-2">
-                          {getProbabilityIcon(diagnosis.probability)}
-                          <span>{diagnosis.disease}</span>
-                        </CardTitle>
-                        <Badge 
-                          className={`${getProbabilityColor(diagnosis.probability)} text-white`}
-                        >
-                          {diagnosis.probability}% 확률
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <h5 className="font-medium text-sm text-foreground mb-2">주요 증상</h5>
-                        <div className="flex flex-wrap gap-2">
-                          {diagnosis.symptoms.map((symptom, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {symptom}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h5 className="font-medium text-sm text-foreground mb-2">권장사항</h5>
-                        <p className="text-sm text-muted-foreground bg-background p-3 rounded border">
-                          {diagnosis.recommendation}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                <div className="bg-background border rounded-lg p-4">
+                  <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(record.medical_law_review, null, 2)}</pre>
+                </div>
               </div>
             </CardContent>
           </Card>

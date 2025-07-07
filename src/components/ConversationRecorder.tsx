@@ -8,7 +8,7 @@ import { Mic, MicOff, Square, User, Loader2, Wifi, WifiOff } from "lucide-react"
 import { useSimpleVoiceChat } from "@/hooks/useSimpleVoiceChat";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/LocalAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Message {
   id: string;
@@ -96,7 +96,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     setIsEndingSession(true);
     
     try {
-      // 1. 로컬 인증 사용자 확인
+      // 1. Supabase 인증 사용자 확인
       if (!user) {
         throw new Error('사용자 인증이 필요합니다');
       }

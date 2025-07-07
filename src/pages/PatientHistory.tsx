@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Calendar, User, MessageSquare, Brain } from "lucide-react";
-import { useAuth } from "@/contexts/LocalAuthContext";
-import { db, type PatientRecord } from "@/lib/indexedDB";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
+
+type PatientRecord = Tables<'patient_records'>;
 
 export default function PatientHistory() {
   const [records, setRecords] = useState<PatientRecord[]>([]);
@@ -20,8 +22,17 @@ export default function PatientHistory() {
     if (!user) return;
     
     try {
-      const patientRecords = await db.getPatientRecords(user.id);
-      setRecords(patientRecords);
+      const { data: patientRecords, error } = await supabase
+        .from('patient_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (patientRecords) {
+        setRecords(patientRecords);
+      }
     } catch (error) {
       console.error('Failed to load patient records:', error);
     } finally {
@@ -102,14 +113,8 @@ export default function PatientHistory() {
                     <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                       <div className="flex items-center space-x-1">
                         <MessageSquare className="w-4 h-4" />
-                        <span>대화 {record.conversation.length}개</span>
+                        <span>대화 {Array.isArray(record.conversation_data) ? record.conversation_data.length : 0}개</span>
                       </div>
-                      {record.diagnoses && record.diagnoses.length > 0 && (
-                        <div className="flex items-center space-x-1">
-                          <Brain className="w-4 h-4 text-medical-success" />
-                          <span>진단 분석 완료</span>
-                        </div>
-                      )}
                     </div>
                     <Link to={`/patient-record/${record.id}`}>
                       <Button variant="outline" size="sm">
