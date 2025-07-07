@@ -147,19 +147,55 @@ export default function Index() {
     
     setIsReviewingLaw(true);
     try {
-      const conversationText = messages.map(msg => msg.content).join('\n');
-      
+      // 먼저 환자 기록을 데이터베이스에 저장
+      const conversationData = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      }));
+
+      const { data: savedRecord, error: saveError } = await supabase
+        .from('patient_records')
+        .insert({
+          user_id: user.id,
+          patient_name: patient.name,
+          patient_age: patient.age,
+          conversation_data: conversationData
+        })
+        .select()
+        .single();
+
+      if (saveError) {
+        console.error('Failed to save patient record:', saveError);
+        throw new Error('환자 기록 저장에 실패했습니다');
+      }
+
+      setCurrentRecordId(savedRecord.id);
+
+      // 의료법 검토 요청
       const { data, error } = await supabase.functions.invoke('medical-law-review', {
         body: {
-          conversationText,
+          recordId: savedRecord.id,
+          conversationData: conversationData,
           patientInfo: {
             name: patient.name,
-            age: patient.age
+            age: patient.age,
+            consent: patient.consent
           }
         }
       });
 
       if (error) throw error;
+      
+      // 검토 결과를 데이터베이스에 업데이트
+      const { error: updateError } = await supabase
+        .from('patient_records')
+        .update({ medical_law_review: data })
+        .eq('id', savedRecord.id);
+
+      if (updateError) {
+        console.error('Failed to update medical law review:', updateError);
+      }
       
       setMedicalLawReview(data);
       toast({
