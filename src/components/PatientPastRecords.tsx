@@ -7,6 +7,7 @@ import { User, Calendar, FileText, Clock, ChevronRight, AlertCircle } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 type PatientRecord = Tables<'patient_records'>;
 
@@ -18,24 +19,39 @@ interface PatientPastRecordsProps {
 export default function PatientPastRecords({ patientName, currentRecordId }: PatientPastRecordsProps) {
   const [pastRecords, setPastRecords] = useState<PatientRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
-    loadPatientHistory();
-  }, [patientName]);
+    if (user && patientName) {
+      loadPatientHistory();
+    }
+  }, [patientName, user]);
 
   const loadPatientHistory = async () => {
+    if (!user) return;
+    
     setLoading(true);
     try {
+      console.log('=== 과거 기록 조회 시작 ===');
+      console.log('환자명:', patientName);
+      console.log('현재 기록 ID:', currentRecordId);
+      console.log('사용자 ID:', user.id);
+      
       const { data: records, error } = await supabase
         .from('patient_records')
         .select('*')
-        .eq('patient_name', patientName)
+        .eq('user_id', user.id) // 현재 사용자의 기록만
+        .eq('patient_name', patientName) // 같은 환자명
         .neq('id', currentRecordId || '') // 현재 진료 기록 제외
         .order('created_at', { ascending: false });
+
+      console.log('조회 결과:', records);
+      console.log('조회 오류:', error);
 
       if (error) throw error;
 
       setPastRecords(records || []);
+      console.log('과거 기록 개수:', records?.length || 0);
     } catch (error) {
       console.error('Failed to load patient history:', error);
     } finally {
