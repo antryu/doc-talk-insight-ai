@@ -501,11 +501,16 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
     reviewData = data;
   }
 
-  // rawAnalysis에서 실제 분석 내용 추출
+  // 실제 분석 내용 추출
   let analysisData = null;
-  if (reviewData?.rawAnalysis) {
+  
+  // Edge Function에서 이미 파싱된 데이터가 있는지 확인
+  if (reviewData && reviewData.medicalActs && reviewData.compliance) {
+    // 이미 파싱된 구조화된 데이터 사용
+    analysisData = reviewData;
+  } else if (reviewData?.rawAnalysis) {
+    // 백업: rawAnalysis 필드가 있으면 파싱 시도
     try {
-      // ```json과 ``` 태그 제거 후 파싱
       const cleanJson = reviewData.rawAnalysis.replace(/```json\n?/g, '').replace(/```/g, '').trim();
       analysisData = JSON.parse(cleanJson);
     } catch (error) {
