@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Sign up error:', error);
       if (error instanceof Error) {
         if (error.name === 'ConstraintError' || error.message.includes('unique') || error.message.includes('uniqueness requirements')) {
-          return { error: '이미 사용 중인 이메일입니다. 다른 이메일을 사용해주세요.' };
+          return { error: '이미 가입된 이메일입니다. 로그인을 이용해주세요.' };
         }
       }
       return { error: '회원가입 중 오류가 발생했습니다.' };
