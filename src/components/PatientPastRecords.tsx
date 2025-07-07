@@ -25,21 +25,12 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
     if (!user) return;
     
     console.log('=== loadPatientHistory 함수 호출 ===');
-    console.log('현재 상태:', { loading, patientName, currentRecordId, userId: user.id });
-    
-    // 이미 로딩 중이면 중복 호출 방지
-    if (loading) {
-      console.log('이미 로딩 중이므로 건너뜀');
-      return;
-    }
+    console.log('환자명:', patientName);
+    console.log('현재 기록 ID:', currentRecordId);
+    console.log('사용자 ID:', user.id);
     
     setLoading(true);
     try {
-      console.log('=== 과거 기록 조회 시작 ===');
-      console.log('환자명:', patientName);
-      console.log('현재 기록 ID:', currentRecordId);
-      console.log('사용자 ID:', user.id);
-      
       const query = supabase
         .from('patient_records')
         .select('*')
@@ -71,7 +62,7 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
     } finally {
       setLoading(false);
     }
-  }, [user, patientName, currentRecordId]); // loading은 의존성에서 제외
+  }, [user, patientName, currentRecordId]);
 
   useEffect(() => {
     if (user && patientName) {
