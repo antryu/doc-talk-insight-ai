@@ -8,6 +8,7 @@ import { Mic, MicOff, Square, User, Loader2, Wifi, WifiOff } from "lucide-react"
 import { useSimpleVoiceChat } from "@/hooks/useSimpleVoiceChat";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/LocalAuthContext";
 
 interface Message {
   id: string;
@@ -26,6 +27,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
   const [isEndingSession, setIsEndingSession] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const addMessage = (content: string) => {
     const newMessage: Message = {
@@ -94,9 +96,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     setIsEndingSession(true);
     
     try {
-      // 1. 대화기록을 데이터베이스에 저장
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      // 1. 로컬 인증 사용자 확인
       if (!user) {
         throw new Error('사용자 인증이 필요합니다');
       }
