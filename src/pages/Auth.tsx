@@ -36,8 +36,8 @@ export default function Auth() {
     if (error) {
       toast({
         title: "회원가입 실패",
-        description: error === "User already registered" 
-          ? "이미 등록된 이메일입니다." 
+        description: error.includes("이미 사용 중인 이메일") 
+          ? "이미 사용 중인 이메일입니다. 다른 이메일을 사용해주세요." 
           : "회원가입에 실패했습니다. 다시 시도해주세요.",
         variant: "destructive",
       });
