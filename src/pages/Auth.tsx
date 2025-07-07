@@ -53,7 +53,7 @@ export default function Auth() {
     } else {
       toast({
         title: "회원가입 성공",
-        description: "계정이 생성되었습니다. 로그인해주세요.",
+        description: "이메일로 인증 링크가 발송되었습니다. 이메일을 확인하고 인증을 완료한 후 로그인해주세요.",
       });
     }
     setLoading(false);
