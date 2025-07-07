@@ -156,13 +156,31 @@ JSON 형식:
     // 3. JSON 파싱 시도
     let parsedResult;
     try {
-      parsedResult = JSON.parse(reviewResult);
+      // ```json과 ``` 태그 제거 후 파싱
+      let cleanJson = reviewResult;
+      
+      // markdown 코드블록 제거
+      if (cleanJson.includes('```json')) {
+        cleanJson = cleanJson.replace(/```json\s*/g, '').replace(/```[\s\S]*$/g, '').trim();
+      }
+      
+      // JSON 부분만 추출 (첫 번째 {부터 마지막 }까지)
+      const jsonStart = cleanJson.indexOf('{');
+      const jsonEnd = cleanJson.lastIndexOf('}');
+      
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        cleanJson = cleanJson.substring(jsonStart, jsonEnd + 1);
+      }
+      
+      parsedResult = JSON.parse(cleanJson);
+      console.log('Successfully parsed AI response');
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', parseError);
+      console.error('Raw AI response:', reviewResult);
       // JSON 파싱 실패 시 텍스트 형태로 저장
       parsedResult = {
         rawAnalysis: reviewResult,
-        parseError: 'JSON 파싱 실패',
+        parseError: parseError.message,
         timestamp: new Date().toISOString()
       };
     }
