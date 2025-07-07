@@ -530,13 +530,17 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* 검토 기본 정보 */}
       {reviewData?.reviewDate && (
-        <div className="bg-medical-light/20 border rounded-lg p-3">
-          <p className="text-sm text-muted-foreground">
-            검토 일시: {new Date(reviewData.reviewDate).toLocaleString()}
-          </p>
+        <div className="bg-medical-light/20 border rounded-lg p-4">
+          <h3 className="font-semibold text-foreground mb-2">검토 정보</h3>
+          <div className="text-sm text-muted-foreground">
+            <p>검토 일시: {new Date(reviewData.reviewDate).toLocaleString()}</p>
+            {reviewData.conversationSummary && (
+              <p>대화 요약: {reviewData.conversationSummary.messageCount}개 메시지, {reviewData.conversationSummary.textLength}자</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -544,21 +548,21 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
         <>
           {/* 법적 준수 상태 */}
           {analysisData.compliance && (
-            <div className="space-y-2">
-              <h5 className="text-sm font-semibold text-foreground">법적 준수 상태</h5>
-              <div className="flex items-start gap-2">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-foreground">법적 준수 상태</h3>
+              <div className="flex items-start gap-3">
                 {(() => {
                   const compliance = getComplianceStatus(analysisData.compliance.status);
                   const Icon = compliance.icon;
                   return (
                     <>
-                      <div className={`p-1.5 rounded-full ${compliance.bg} flex-shrink-0`}>
-                        <Icon className={`w-4 h-4 ${compliance.color}`} />
+                      <div className={`p-2 rounded-full ${compliance.bg} flex-shrink-0`}>
+                        <Icon className={`w-5 h-5 ${compliance.color}`} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">{compliance.label}</p>
+                        <p className="font-medium text-foreground">{compliance.label}</p>
                         {analysisData.compliance.details && (
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                             {analysisData.compliance.details}
                           </p>
                         )}
@@ -570,43 +574,73 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
             </div>
           )}
 
-          {/* 위험 요소 (간략히) */}
-          {analysisData.risks && Array.isArray(analysisData.risks) && analysisData.risks.length > 0 && (
-            <div className="space-y-2">
-              <h5 className="text-sm font-semibold text-foreground">위험 요소</h5>
-              <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
-                {analysisData.risks.slice(0, 2).map((risk: string, index: number) => (
-                  <p key={index} className="leading-relaxed">{index + 1}. {risk}</p>
+          {/* 확인된 의료 행위 */}
+          {analysisData.medicalActs && Array.isArray(analysisData.medicalActs) && analysisData.medicalActs.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-foreground">확인된 의료 행위</h3>
+              <div className="space-y-2">
+                {analysisData.medicalActs.map((act: any, index: number) => (
+                  <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-sm text-green-700 leading-relaxed">
+                      {typeof act === 'string' ? act : JSON.stringify(act)}
+                    </p>
+                  </div>
                 ))}
-                {analysisData.risks.length > 2 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    외 {analysisData.risks.length - 2}개 항목...
-                  </p>
-                )}
               </div>
             </div>
           )}
 
-          {/* 권장 사항 (간략히) */}
-          {analysisData.recommendations && Array.isArray(analysisData.recommendations) && analysisData.recommendations.length > 0 && (
-            <div className="space-y-2">
-              <h5 className="text-sm font-semibold text-foreground">권장 사항</h5>
-              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-2">
-                {analysisData.recommendations.slice(0, 2).map((recommendation: string, index: number) => (
-                  <p key={index} className="leading-relaxed">{index + 1}. {recommendation}</p>
+          {/* 위험 요소 */}
+          {analysisData.risks && Array.isArray(analysisData.risks) && analysisData.risks.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-foreground">위험 요소</h3>
+              <div className="space-y-2">
+                {analysisData.risks.map((risk: string, index: number) => (
+                  <div key={index} className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-red-700 leading-relaxed">{risk}</p>
+                  </div>
                 ))}
-                {analysisData.recommendations.length > 2 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    외 {analysisData.recommendations.length - 2}개 항목...
-                  </p>
-                )}
+              </div>
+            </div>
+          )}
+
+          {/* 권장 사항 */}
+          {analysisData.recommendations && Array.isArray(analysisData.recommendations) && analysisData.recommendations.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-foreground">권장 사항</h3>
+              <div className="space-y-2">
+                {analysisData.recommendations.map((recommendation: string, index: number) => (
+                  <div key={index} className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-blue-700 leading-relaxed">{recommendation}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 기록 관련 주의사항 */}
+          {analysisData.recordingNotes && Array.isArray(analysisData.recordingNotes) && analysisData.recordingNotes.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-foreground">기록 관련 주의사항</h3>
+              <div className="space-y-2">
+                {analysisData.recordingNotes.map((note: string, index: number) => (
+                  <div key={index} className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <MessageSquare className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-yellow-700 leading-relaxed">{note}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
         </>
       ) : (
-        <div className="bg-background border rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">검토 데이터를 분석할 수 없습니다.</p>
+        <div className="bg-background border rounded-lg p-4">
+          <h3 className="font-semibold text-foreground mb-3">원본 검토 데이터</h3>
+          <pre className="text-sm whitespace-pre-wrap text-muted-foreground">
+            {JSON.stringify(reviewData, null, 2)}
+          </pre>
         </div>
       )}
     </div>
