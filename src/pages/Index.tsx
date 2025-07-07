@@ -11,7 +11,7 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
-import { 
+import {
   Stethoscope, 
   Settings, 
   Menu, 
@@ -20,7 +20,11 @@ import {
   LogOut, 
   FileText, 
   Brain, 
-  Activity 
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  MessageSquare
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +54,8 @@ export default function Index() {
   const [currentRecordId, setCurrentRecordId] = useState<string | null>(null);
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
+  const [medicalLawReview, setMedicalLawReview] = useState<any>(null);
+  const [isReviewingLaw, setIsReviewingLaw] = useState(false);
   const [recentRecords, setRecentRecords] = useState<PatientRecord[]>([]);
   const [todayCount, setTodayCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -71,9 +77,15 @@ export default function Index() {
     setCurrentRecordId(null);
     setConversation(messages);
     setCurrentStep('analysis');
+    
+    // 의료법 검토 시작
+    if (messages.length > 0) {
+      performMedicalLawReview(messages, patientInfo);
+    }
+    
     toast({
       title: "대화 기록 완료",
-      description: "진료 대화가 성공적으로 저장되었습니다.",
+      description: "진료 대화가 성공적으로 저장되었습니다. 의료법 검토를 진행중입니다.",
     });
   };
 
@@ -82,6 +94,8 @@ export default function Index() {
     setPatientInfo(null);
     setConversation([]);
     setCurrentRecordId(null);
+    setMedicalLawReview(null);
+    setIsReviewingLaw(false);
     loadPatientRecords(); // 새 진료 시작 시 기록 새로고침
   };
 
@@ -125,6 +139,43 @@ export default function Index() {
       description: "AI 진단 분석 결과가 저장되었습니다.",
     });
     loadPatientRecords(); // 기록 새로고침
+  };
+
+  // 의료법 검토 수행
+  const performMedicalLawReview = async (messages: Message[], patient: PatientInfo) => {
+    if (!user) return;
+    
+    setIsReviewingLaw(true);
+    try {
+      const conversationText = messages.map(msg => msg.content).join('\n');
+      
+      const { data, error } = await supabase.functions.invoke('medical-law-review', {
+        body: {
+          conversationText,
+          patientInfo: {
+            name: patient.name,
+            age: patient.age
+          }
+        }
+      });
+
+      if (error) throw error;
+      
+      setMedicalLawReview(data);
+      toast({
+        title: "의료법 검토 완료",
+        description: "의료법 검토가 완료되었습니다.",
+      });
+    } catch (error) {
+      console.error('Medical law review failed:', error);
+      toast({
+        title: "의료법 검토 실패",
+        description: "의료법 검토 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReviewingLaw(false);
+    }
   };
 
   // 컴포넌트 마운트 시 환자 기록 로드
@@ -280,6 +331,24 @@ export default function Index() {
                     </div>
                   )}
                   
+                  {/* 의료법 검토 결과 */}
+                  <div className="bg-background border rounded-lg p-4 mb-6">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <Brain className="w-4 h-4" />
+                      의료법 검토 결과
+                    </h4>
+                    {isReviewingLaw ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin w-6 h-6 border-2 border-medical-primary border-t-transparent rounded-full mr-3"></div>
+                        <p className="text-muted-foreground">의료법 검토 중...</p>
+                      </div>
+                    ) : medicalLawReview ? (
+                      <MedicalLawReviewDisplay data={medicalLawReview} />
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">의료법 검토 결과가 없습니다.</p>
+                    )}
+                  </div>
+                  
                   <div className="flex space-x-3">
                     <Button 
                       onClick={handleDiagnosisAnalysis} 
@@ -379,6 +448,131 @@ export default function Index() {
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+// 의료법 검토 결과 표시 컴포넌트
+interface MedicalLawReviewDisplayProps {
+  data: any;
+}
+
+function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
+  let reviewData;
+  try {
+    reviewData = typeof data === 'string' ? JSON.parse(data) : data;
+  } catch (error) {
+    reviewData = data;
+  }
+
+  // rawAnalysis에서 실제 분석 내용 추출
+  let analysisData = null;
+  if (reviewData?.rawAnalysis) {
+    try {
+      // ```json과 ``` 태그 제거 후 파싱
+      const cleanJson = reviewData.rawAnalysis.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+      analysisData = JSON.parse(cleanJson);
+    } catch (error) {
+      console.error('Failed to parse rawAnalysis:', error);
+    }
+  }
+
+  const getComplianceStatus = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'compliant':
+      case '준수':
+        return { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', label: '준수' };
+      case 'warning':
+      case '주의':
+        return { icon: AlertTriangle, color: 'text-yellow-500', bg: 'bg-yellow-50', label: '주의' };
+      case 'violation':
+      case '위반':
+        return { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50', label: '위반' };
+      default:
+        return { icon: AlertTriangle, color: 'text-gray-500', bg: 'bg-gray-50', label: '미확인' };
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* 검토 기본 정보 */}
+      {reviewData?.reviewDate && (
+        <div className="bg-medical-light/20 border rounded-lg p-3">
+          <p className="text-sm text-muted-foreground">
+            검토 일시: {new Date(reviewData.reviewDate).toLocaleString()}
+          </p>
+        </div>
+      )}
+
+      {analysisData ? (
+        <>
+          {/* 법적 준수 상태 */}
+          {analysisData.compliance && (
+            <div className="space-y-2">
+              <h5 className="text-sm font-semibold text-foreground">법적 준수 상태</h5>
+              <div className="flex items-start gap-2">
+                {(() => {
+                  const compliance = getComplianceStatus(analysisData.compliance.status);
+                  const Icon = compliance.icon;
+                  return (
+                    <>
+                      <div className={`p-1.5 rounded-full ${compliance.bg} flex-shrink-0`}>
+                        <Icon className={`w-4 h-4 ${compliance.color}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{compliance.label}</p>
+                        {analysisData.compliance.details && (
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                            {analysisData.compliance.details}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* 위험 요소 (간략히) */}
+          {analysisData.risks && Array.isArray(analysisData.risks) && analysisData.risks.length > 0 && (
+            <div className="space-y-2">
+              <h5 className="text-sm font-semibold text-foreground">위험 요소</h5>
+              <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                {analysisData.risks.slice(0, 2).map((risk: string, index: number) => (
+                  <p key={index} className="leading-relaxed">{index + 1}. {risk}</p>
+                ))}
+                {analysisData.risks.length > 2 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    외 {analysisData.risks.length - 2}개 항목...
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 권장 사항 (간략히) */}
+          {analysisData.recommendations && Array.isArray(analysisData.recommendations) && analysisData.recommendations.length > 0 && (
+            <div className="space-y-2">
+              <h5 className="text-sm font-semibold text-foreground">권장 사항</h5>
+              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-2">
+                {analysisData.recommendations.slice(0, 2).map((recommendation: string, index: number) => (
+                  <p key={index} className="leading-relaxed">{index + 1}. {recommendation}</p>
+                ))}
+                {analysisData.recommendations.length > 2 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    외 {analysisData.recommendations.length - 2}개 항목...
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="bg-background border rounded-lg p-3">
+          <p className="text-xs text-muted-foreground">검토 데이터를 분석할 수 없습니다.</p>
+        </div>
+      )}
     </div>
   );
 }
