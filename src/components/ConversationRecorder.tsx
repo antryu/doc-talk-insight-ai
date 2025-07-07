@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mic, MicOff, Square, User, Loader2, Wifi, WifiOff } from "lucide-react";
 import { useSimpleVoiceChat } from "@/hooks/useSimpleVoiceChat";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -82,7 +83,7 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
     });
   };
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     console.log('=== 진료종료 요청 ===');
     console.log('현재 메시지 수:', messages.length);
     
@@ -90,11 +91,85 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
       stopRecording();
     }
     
-    // 1초 후 진료 종료
-    setTimeout(() => {
-      console.log('진료 종료 - 최종 메시지 수:', messages.length);
-      onEndRecording([...messages]);
-    }, 1000);
+    setIsEndingSession(true);
+    
+    try {
+      // 1. 대화기록을 데이터베이스에 저장
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('사용자 인증이 필요합니다');
+      }
+
+      console.log('Saving patient record to database...');
+      const { data: savedRecord, error: saveError } = await supabase
+        .from('patient_records')
+        .insert({
+          user_id: user.id,
+          patient_name: patientInfo.name,
+          patient_age: patientInfo.age,
+          conversation_data: messages.map(msg => ({
+            ...msg,
+            timestamp: msg.timestamp.toISOString()
+          }))
+        })
+        .select()
+        .single();
+
+      if (saveError) {
+        throw saveError;
+      }
+
+      console.log('Patient record saved:', savedRecord);
+
+      // 2. 의료법 검토 요청
+      toast({
+        title: "의료법 검토 중",
+        description: "대화기록을 바탕으로 의료법을 검토하고 있습니다...",
+      });
+
+      const { data: reviewData, error: reviewError } = await supabase.functions.invoke('medical-law-review', {
+        body: { 
+          recordId: savedRecord.id,
+          conversationData: messages,
+          patientInfo: patientInfo
+        }
+      });
+
+      if (reviewError) {
+        console.error('Medical law review error:', reviewError);
+        // 검토 실패해도 진료 종료는 진행
+      } else {
+        console.log('Medical law review completed:', reviewData);
+        
+        // 검토 결과를 데이터베이스에 업데이트
+        await supabase
+          .from('patient_records')
+          .update({ medical_law_review: reviewData })
+          .eq('id', savedRecord.id);
+      }
+
+      toast({
+        title: "진료 종료 완료",
+        description: "대화기록이 저장되고 의료법 검토가 완료되었습니다.",
+      });
+
+      // 3. 진료 종료 콜백 실행
+      setTimeout(() => {
+        console.log('진료 종료 - 최종 메시지 수:', messages.length);
+        onEndRecording([...messages]);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Failed to end session:', error);
+      toast({
+        title: "진료 종료 오류",
+        description: error instanceof Error ? error.message : '진료 종료 중 오류가 발생했습니다.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsEndingSession(false);
+    }
   };
 
   // 스크롤 자동 이동
@@ -201,10 +276,15 @@ export default function ConversationRecorder({ patientInfo, onEndRecording }: Co
                   </Button>
                   <Button
                     onClick={handleEndSession}
+                    disabled={isEndingSession}
                     className="bg-medical-warning hover:bg-medical-warning/90 text-white px-6 py-3"
                   >
-                    <Square className="w-4 h-4 mr-2" />
-                    진료 종료
+                    {isEndingSession ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Square className="w-4 h-4 mr-2" />
+                    )}
+                    {isEndingSession ? "진료 종료 중..." : "진료 종료"}
                   </Button>
                 </div>
               ) : (

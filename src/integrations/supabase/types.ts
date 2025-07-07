@@ -9,6 +9,72 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      medical_law_articles: {
+        Row: {
+          article_number: string
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          keywords: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          article_number: string
+          category?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          keywords?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          article_number?: string
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          keywords?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      patient_records: {
+        Row: {
+          conversation_data: Json
+          created_at: string
+          id: string
+          medical_law_review: Json | null
+          patient_age: string
+          patient_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_data: Json
+          created_at?: string
+          id?: string
+          medical_law_review?: Json | null
+          patient_age: string
+          patient_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_data?: Json
+          created_at?: string
+          id?: string
+          medical_law_review?: Json | null
+          patient_age?: string
+          patient_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
