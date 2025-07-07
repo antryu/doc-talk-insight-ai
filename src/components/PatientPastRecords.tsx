@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,17 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user && patientName) {
-      console.log('=== useEffect 실행 ===', { patientName, currentRecordId, userId: user.id });
-      loadPatientHistory();
-    }
-  }, [patientName, currentRecordId, user?.id]); // 의존성 배열 최적화
-
-  const loadPatientHistory = async () => {
+  const loadPatientHistory = useCallback(async () => {
     if (!user) return;
+    
+    console.log('=== loadPatientHistory 함수 호출 ===');
+    console.log('현재 상태:', { loading, patientName, currentRecordId, userId: user.id });
+    
+    // 이미 로딩 중이면 중복 호출 방지
+    if (loading) {
+      console.log('이미 로딩 중이므로 건너뜀');
+      return;
+    }
     
     setLoading(true);
     try {
@@ -63,12 +65,20 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
 
       setPastRecords(records || []);
       console.log('과거 기록 개수:', records?.length || 0);
+      console.log('기록 ID들:', records?.map(r => r.id));
     } catch (error) {
       console.error('Failed to load patient history:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, patientName, currentRecordId]); // loading은 의존성에서 제외
+
+  useEffect(() => {
+    if (user && patientName) {
+      console.log('=== useEffect 실행 ===', { patientName, currentRecordId, userId: user.id });
+      loadPatientHistory();
+    }
+  }, [loadPatientHistory]); // loadPatientHistory를 의존성에 추가
 
   if (loading) {
     return (
