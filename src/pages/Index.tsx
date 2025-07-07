@@ -11,12 +11,39 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
+import { 
+  Stethoscope, 
+  Settings, 
+  Menu, 
+  Users, 
+  History, 
+  LogOut, 
+  FileText, 
+  Brain, 
+  Activity 
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
+import PatientRegistration from "@/components/PatientRegistration";
+import ConversationRecorder from "@/components/ConversationRecorder";
+import DiagnosisAnalysis from "@/components/DiagnosisAnalysis";
+import SettingsDialog from "@/components/SettingsDialog";
 
 type PatientRecord = Tables<'patient_records'>;
+
+interface PatientInfo {
+  name: string;
+  age: string;
+  consent: boolean;
+}
+
+interface Message {
+  id: string;
+  content: string;  
+  timestamp: Date;
+}
 
 export default function Index() {
   const [currentStep, setCurrentStep] = useState<'registration' | 'recording' | 'analysis' | 'diagnosis'>('registration');

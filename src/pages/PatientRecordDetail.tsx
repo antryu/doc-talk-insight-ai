@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft, User, MessageSquare, Brain, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 
@@ -110,7 +111,7 @@ export default function PatientRecordDetail() {
           <CardContent>
             {record.conversation_data && Array.isArray(record.conversation_data) && record.conversation_data.length > 0 ? (
               <div className="space-y-4">
-                {record.conversation_data.map((message, index) => (
+                {record.conversation_data.map((message: any, index) => (
                   <div key={message.id || index} className="p-4 rounded-lg bg-medical-light/50 border">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-medium text-medical-primary">
