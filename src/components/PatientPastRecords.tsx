@@ -37,18 +37,27 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
       console.log('현재 기록 ID:', currentRecordId);
       console.log('사용자 ID:', user.id);
       
-      const { data: records, error } = await supabase
+      const query = supabase
         .from('patient_records')
         .select('*')
         .eq('user_id', user.id) // 현재 사용자의 기록만
         .eq('patient_name', patientName) // 같은 환자명
-        .neq('id', currentRecordId || '') // 현재 진료 기록 제외
         .order('created_at', { ascending: false });
+      
+      // 현재 진료 기록이 있으면 제외
+      if (currentRecordId) {
+        query.neq('id', currentRecordId);
+      }
+      
+      const { data: records, error } = await query;
 
       console.log('조회 결과:', records);
       console.log('조회 오류:', error);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       setPastRecords(records || []);
       console.log('과거 기록 개수:', records?.length || 0);
