@@ -67,9 +67,9 @@ export default function Auth() {
     if (error) {
       toast({
         title: "로그인 실패",
-        description: error === "Invalid login credentials" 
-          ? "이메일 또는 비밀번호가 올바르지 않습니다." 
-          : "로그인에 실패했습니다. 다시 시도해주세요.",
+        description: error.includes("올바르지 않습니다") 
+          ? "이메일 또는 비밀번호가 올바르지 않습니다. 계정이 없으시면 회원가입을 해주세요." 
+          : "로그인에 실패했습니다. 계정이 없으시면 회원가입을 진행해주세요.",
         variant: "destructive",
       });
     } else {
