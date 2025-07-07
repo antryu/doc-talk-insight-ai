@@ -684,14 +684,32 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
           {analysisData.recordingNotes && Array.isArray(analysisData.recordingNotes) && analysisData.recordingNotes.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-semibold text-foreground">기록 관련 주의사항</h3>
-              <div className="space-y-2">
-                {analysisData.recordingNotes.map((note: string, index: number) => (
-                  <div key={index} className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <MessageSquare className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-yellow-700 leading-relaxed">{note}</p>
-                  </div>
-                ))}
-              </div>
+               <div className="space-y-2">
+                 {analysisData.recordingNotes.map((item: any, index: number) => (
+                   <div key={index} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                     <div className="flex items-start gap-2">
+                       <MessageSquare className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                       <div className="flex-1">
+                         <p className="text-sm text-yellow-700 leading-relaxed font-medium">
+                           {typeof item === 'string' ? item : item.note}
+                         </p>
+                         {item.relatedArticles && Array.isArray(item.relatedArticles) && item.relatedArticles.length > 0 && (
+                           <div className="mt-2">
+                             <p className="text-xs text-yellow-600 font-medium">관련 조항:</p>
+                             <div className="flex flex-wrap gap-1 mt-1">
+                               {item.relatedArticles.map((article: string, i: number) => (
+                                 <Badge key={i} variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-300">
+                                   {article}
+                                 </Badge>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
             </div>
           )}
         </>
