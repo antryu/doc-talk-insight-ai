@@ -34,6 +34,7 @@ import PatientRegistration from "@/components/PatientRegistration";
 import ConversationRecorder from "@/components/ConversationRecorder";
 import DiagnosisAnalysis from "@/components/DiagnosisAnalysis";
 import SettingsDialog from "@/components/SettingsDialog";
+import PatientPastRecords from "@/components/PatientPastRecords";
 
 type PatientRecord = Tables<'patient_records'>;
 
@@ -319,10 +320,18 @@ export default function Index() {
             )}
             
             {currentStep === 'recording' && patientInfo && (
-              <ConversationRecorder 
-                patientInfo={patientInfo}
-                onEndRecording={handleEndRecording}
-              />
+              <div className="space-y-6">
+                <ConversationRecorder 
+                  patientInfo={patientInfo}
+                  onEndRecording={handleEndRecording}
+                />
+                
+                {/* 환자 과거 기록 표시 */}
+                <PatientPastRecords 
+                  patientName={patientInfo.name} 
+                  currentRecordId={currentRecordId || undefined}
+                />
+              </div>
             )}
             
             {currentStep === 'analysis' && patientInfo && (
