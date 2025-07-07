@@ -72,21 +72,44 @@ ${conversationText}
 
 다음 사항들을 JSON 형태로 분석해 주세요:
 1. 의료 행위 식별 (진단, 처방, 의료 상담 등)
-2. 의료법 준수 여부 검토
-3. 잠재적 법적 위험 요소
+2. 의료법 준수 여부 검토 (관련 조항 명시)
+3. 잠재적 법적 위험 요소 (관련 조항 명시)
 4. 권장 사항 및 개선점
 5. 의무기록 작성 시 주의사항
 
+**중요**: 의료법 관련 사항을 언급할 때는 반드시 구체적인 조항(예: 의료법 제12조 제1항)을 명시해주세요.
+
 JSON 형식:
 {
-  "medicalActs": ["확인된 의료 행위들"],
+  "medicalActs": [
+    {
+      "act": "확인된 의료 행위",
+      "relatedArticles": ["관련 의료법 조항 (예: 의료법 제12조 제1항)"]
+    }
+  ],
   "compliance": {
     "status": "compliant|warning|violation",
-    "details": "준수 상태 상세 설명"
+    "details": "준수 상태 상세 설명",
+    "relatedArticles": ["관련 의료법 조항"]
   },
-  "risks": ["잠재적 위험 요소들"],
-  "recommendations": ["권장 사항들"],
-  "recordingNotes": ["의무기록 작성 시 주의사항들"]
+  "risks": [
+    {
+      "risk": "잠재적 위험 요소",
+      "relatedArticles": ["관련 의료법 조항"]
+    }
+  ],
+  "recommendations": [
+    {
+      "recommendation": "권장 사항",
+      "relatedArticles": ["관련 의료법 조항"]
+    }
+  ],
+  "recordingNotes": [
+    {
+      "note": "의무기록 작성 시 주의사항",
+      "relatedArticles": ["관련 의료법 조항"]
+    }
+  ]
 }
 `;
 

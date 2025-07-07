@@ -559,14 +559,26 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
                       <div className={`p-2 rounded-full ${compliance.bg} flex-shrink-0`}>
                         <Icon className={`w-5 h-5 ${compliance.color}`} />
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground">{compliance.label}</p>
-                        {analysisData.compliance.details && (
-                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                            {analysisData.compliance.details}
-                          </p>
-                        )}
-                      </div>
+                       <div className="flex-1">
+                         <p className="font-medium text-foreground">{compliance.label}</p>
+                         {analysisData.compliance.details && (
+                           <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                             {analysisData.compliance.details}
+                           </p>
+                         )}
+                         {analysisData.compliance.relatedArticles && Array.isArray(analysisData.compliance.relatedArticles) && analysisData.compliance.relatedArticles.length > 0 && (
+                           <div className="mt-2">
+                             <p className="text-xs text-muted-foreground font-medium">관련 조항:</p>
+                             <div className="flex flex-wrap gap-1 mt-1">
+                               {analysisData.compliance.relatedArticles.map((article: string, i: number) => (
+                                 <Badge key={i} variant="outline" className="text-xs">
+                                   {article}
+                                 </Badge>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+                       </div>
                     </>
                   );
                 })()}
@@ -578,15 +590,27 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
           {analysisData.medicalActs && Array.isArray(analysisData.medicalActs) && analysisData.medicalActs.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-semibold text-foreground">확인된 의료 행위</h3>
-              <div className="space-y-2">
-                {analysisData.medicalActs.map((act: any, index: number) => (
-                  <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <p className="text-sm text-green-700 leading-relaxed">
-                      {typeof act === 'string' ? act : JSON.stringify(act)}
-                    </p>
-                  </div>
-                ))}
-              </div>
+               <div className="space-y-2">
+                 {analysisData.medicalActs.map((item: any, index: number) => (
+                   <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                     <p className="text-sm text-green-700 leading-relaxed font-medium">
+                       {typeof item === 'string' ? item : item.act}
+                     </p>
+                     {item.relatedArticles && Array.isArray(item.relatedArticles) && item.relatedArticles.length > 0 && (
+                       <div className="mt-2">
+                         <p className="text-xs text-green-600 font-medium">관련 조항:</p>
+                         <div className="flex flex-wrap gap-1 mt-1">
+                           {item.relatedArticles.map((article: string, i: number) => (
+                             <Badge key={i} variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
+                               {article}
+                             </Badge>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 ))}
+               </div>
             </div>
           )}
 
@@ -594,14 +618,32 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
           {analysisData.risks && Array.isArray(analysisData.risks) && analysisData.risks.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-semibold text-foreground">위험 요소</h3>
-              <div className="space-y-2">
-                {analysisData.risks.map((risk: string, index: number) => (
-                  <div key={index} className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
-                    <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-red-700 leading-relaxed">{risk}</p>
-                  </div>
-                ))}
-              </div>
+               <div className="space-y-2">
+                 {analysisData.risks.map((item: any, index: number) => (
+                   <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-3">
+                     <div className="flex items-start gap-2">
+                       <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                       <div className="flex-1">
+                         <p className="text-sm text-red-700 leading-relaxed font-medium">
+                           {typeof item === 'string' ? item : item.risk}
+                         </p>
+                         {item.relatedArticles && Array.isArray(item.relatedArticles) && item.relatedArticles.length > 0 && (
+                           <div className="mt-2">
+                             <p className="text-xs text-red-600 font-medium">관련 조항:</p>
+                             <div className="flex flex-wrap gap-1 mt-1">
+                               {item.relatedArticles.map((article: string, i: number) => (
+                                 <Badge key={i} variant="outline" className="text-xs bg-red-100 text-red-700 border-red-300">
+                                   {article}
+                                 </Badge>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
             </div>
           )}
 
@@ -609,14 +651,32 @@ function MedicalLawReviewDisplay({ data }: MedicalLawReviewDisplayProps) {
           {analysisData.recommendations && Array.isArray(analysisData.recommendations) && analysisData.recommendations.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-semibold text-foreground">권장 사항</h3>
-              <div className="space-y-2">
-                {analysisData.recommendations.map((recommendation: string, index: number) => (
-                  <div key={index} className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-blue-700 leading-relaxed">{recommendation}</p>
-                  </div>
-                ))}
-              </div>
+               <div className="space-y-2">
+                 {analysisData.recommendations.map((item: any, index: number) => (
+                   <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                     <div className="flex items-start gap-2">
+                       <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                       <div className="flex-1">
+                         <p className="text-sm text-blue-700 leading-relaxed font-medium">
+                           {typeof item === 'string' ? item : item.recommendation}
+                         </p>
+                         {item.relatedArticles && Array.isArray(item.relatedArticles) && item.relatedArticles.length > 0 && (
+                           <div className="mt-2">
+                             <p className="text-xs text-blue-600 font-medium">관련 조항:</p>
+                             <div className="flex flex-wrap gap-1 mt-1">
+                               {item.relatedArticles.map((article: string, i: number) => (
+                                 <Badge key={i} variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                                   {article}
+                                 </Badge>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
             </div>
           )}
 
