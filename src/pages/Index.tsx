@@ -148,35 +148,55 @@ export default function Index() {
     
     setIsReviewingLaw(true);
     try {
-      // 먼저 환자 기록을 데이터베이스에 저장
+      // 환자 기록 데이터 준비
       const conversationData = messages.map(msg => ({
         id: msg.id,
         content: msg.content,
         timestamp: msg.timestamp.toISOString()
       }));
 
-      const { data: savedRecord, error: saveError } = await supabase
-        .from('patient_records')
-        .insert({
-          user_id: user.id,
-          patient_name: patient.name,
-          patient_age: patient.age,
-          conversation_data: conversationData
-        })
-        .select()
-        .single();
+      let recordId = currentRecordId;
 
-      if (saveError) {
-        console.error('Failed to save patient record:', saveError);
-        throw new Error('환자 기록 저장에 실패했습니다');
+      // 현재 기록 ID가 없으면 새로 저장
+      if (!recordId) {
+        console.log('=== 새로운 환자 기록 저장 ===');
+        const { data: savedRecord, error: saveError } = await supabase
+          .from('patient_records')
+          .insert({
+            user_id: user.id,
+            patient_name: patient.name,
+            patient_age: patient.age,
+            conversation_data: conversationData
+          })
+          .select()
+          .single();
+
+        if (saveError) {
+          console.error('Failed to save patient record:', saveError);
+          throw new Error('환자 기록 저장에 실패했습니다');
+        }
+
+        recordId = savedRecord.id;
+        setCurrentRecordId(recordId);
+        console.log('환자 기록 저장 완료:', recordId);
+      } else {
+        console.log('=== 기존 환자 기록 업데이트 ===');
+        // 기존 기록이 있으면 대화 데이터만 업데이트
+        const { error: updateError } = await supabase
+          .from('patient_records')
+          .update({ conversation_data: conversationData })
+          .eq('id', recordId);
+
+        if (updateError) {
+          console.error('Failed to update conversation data:', updateError);
+        }
+        console.log('대화 데이터 업데이트 완료:', recordId);
       }
-
-      setCurrentRecordId(savedRecord.id);
 
       // 의료법 검토 요청
       const { data, error } = await supabase.functions.invoke('medical-law-review', {
         body: {
-          recordId: savedRecord.id,
+          recordId: recordId,
           conversationData: conversationData,
           patientInfo: {
             name: patient.name,
@@ -192,7 +212,7 @@ export default function Index() {
       const { error: updateError } = await supabase
         .from('patient_records')
         .update({ medical_law_review: data })
-        .eq('id', savedRecord.id);
+        .eq('id', recordId);
 
       if (updateError) {
         console.error('Failed to update medical law review:', updateError);
