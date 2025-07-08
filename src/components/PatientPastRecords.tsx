@@ -16,6 +16,34 @@ interface PatientPastRecordsProps {
   currentRecordId?: string;
 }
 
+// 중복 기록 제거 함수 (10분 이내에 생성된 유사한 기록들 중 가장 최근 것만 유지)
+function removeDuplicateRecords(records: PatientRecord[]): PatientRecord[] {
+  const grouped = new Map<string, PatientRecord[]>();
+  
+  // 10분 단위로 그룹화
+  records.forEach(record => {
+    const date = new Date(record.created_at);
+    const tenMinuteInterval = Math.floor(date.getTime() / (10 * 60 * 1000)); // 10분 단위
+    const key = `${record.patient_name}-${tenMinuteInterval}`;
+    
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    grouped.get(key)!.push(record);
+  });
+  
+  // 각 그룹에서 가장 최근 기록만 선택
+  const uniqueRecords: PatientRecord[] = [];
+  grouped.forEach(group => {
+    // 가장 최근 기록 선택
+    const latest = group.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    uniqueRecords.push(latest);
+  });
+  
+  // 날짜순으로 정렬
+  return uniqueRecords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
 export default function PatientPastRecords({ patientName, currentRecordId }: PatientPastRecordsProps) {
   const [pastRecords, setPastRecords] = useState<PatientRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,9 +82,11 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
         throw error;
       }
 
-      setPastRecords(records || []);
-      console.log('과거 기록 개수:', records?.length || 0);
-      console.log('기록 ID들:', records?.map(r => r.id));
+      // 중복 기록 제거 (같은 날짜/시간대의 유사한 기록들)
+      const uniqueRecords = records ? removeDuplicateRecords(records) : [];
+      setPastRecords(uniqueRecords);
+      console.log('과거 기록 개수:', uniqueRecords.length);
+      console.log('기록 ID들:', uniqueRecords.map(r => r.id));
     } catch (error) {
       console.error('Failed to load patient history:', error);
     } finally {
