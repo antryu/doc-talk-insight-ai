@@ -50,6 +50,34 @@ interface Message {
   timestamp: Date;
 }
 
+// 중복 기록 제거 함수 (10분 이내에 생성된 유사한 기록들 중 가장 최근 것만 유지)
+function removeDuplicateRecords(records: PatientRecord[]): PatientRecord[] {
+  const grouped = new Map<string, PatientRecord[]>();
+  
+  // 10분 단위로 그룹화
+  records.forEach(record => {
+    const date = new Date(record.created_at);
+    const tenMinuteInterval = Math.floor(date.getTime() / (10 * 60 * 1000)); // 10분 단위
+    const key = `${record.patient_name}-${tenMinuteInterval}`;
+    
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    grouped.get(key)!.push(record);
+  });
+  
+  // 각 그룹에서 가장 최근 기록만 선택
+  const uniqueRecords: PatientRecord[] = [];
+  grouped.forEach(group => {
+    // 가장 최근 기록 선택
+    const latest = group.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    uniqueRecords.push(latest);
+  });
+  
+  // 날짜순으로 정렬
+  return uniqueRecords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
 export default function Index() {
   const [currentStep, setCurrentStep] = useState<'registration' | 'recording' | 'analysis' | 'diagnosis'>('registration');
   const [currentRecordId, setCurrentRecordId] = useState<string | null>(null);
@@ -113,7 +141,9 @@ export default function Index() {
       if (error) throw error;
 
       if (records) {
-        setRecentRecords(records.slice(0, 5)); // 최근 5개만 표시
+        // 중복 제거 후 최근 5개만 표시
+        const uniqueRecords = removeDuplicateRecords(records);
+        setRecentRecords(uniqueRecords.slice(0, 5));
         setTotalCount(records.length);
         
         // 오늘 진료 수 계산
