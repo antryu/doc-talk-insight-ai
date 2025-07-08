@@ -16,15 +16,28 @@ interface PatientPastRecordsProps {
   currentRecordId?: string;
 }
 
-// 중복 기록 제거 함수 (10분 이내에 생성된 유사한 기록들 중 가장 최근 것만 유지)
-function removeDuplicateRecords(records: PatientRecord[]): PatientRecord[] {
+// 이름과 나이가 모두 동일한 기록들만 보여주는 함수
+function getRecordsWithSameNameAndAge(records: PatientRecord[], currentPatientName: string): PatientRecord[] {
+  // 현재 환자와 이름이 같은 기록들만 필터링
+  const sameNameRecords = records.filter(record => record.patient_name === currentPatientName);
+  
+  if (sameNameRecords.length === 0) return [];
+  
+  // 현재 환자의 나이를 찾기 위해 가장 최근 기록 사용
+  const currentPatientAge = sameNameRecords[0].patient_age;
+  
+  // 이름과 나이가 모두 동일한 기록들만 필터링
+  const sameNameAndAgeRecords = sameNameRecords.filter(record => 
+    record.patient_name === currentPatientName && record.patient_age === currentPatientAge
+  );
+  
+  // 10분 이내 중복 제거 (기존 로직 유지)
   const grouped = new Map<string, PatientRecord[]>();
   
-  // 10분 단위로 그룹화
-  records.forEach(record => {
+  sameNameAndAgeRecords.forEach(record => {
     const date = new Date(record.created_at);
-    const tenMinuteInterval = Math.floor(date.getTime() / (10 * 60 * 1000)); // 10분 단위
-    const key = `${record.patient_name}-${tenMinuteInterval}`;
+    const tenMinuteInterval = Math.floor(date.getTime() / (10 * 60 * 1000));
+    const key = `${record.patient_name}-${record.patient_age}-${tenMinuteInterval}`;
     
     if (!grouped.has(key)) {
       grouped.set(key, []);
@@ -35,12 +48,10 @@ function removeDuplicateRecords(records: PatientRecord[]): PatientRecord[] {
   // 각 그룹에서 가장 최근 기록만 선택
   const uniqueRecords: PatientRecord[] = [];
   grouped.forEach(group => {
-    // 가장 최근 기록 선택
     const latest = group.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
     uniqueRecords.push(latest);
   });
   
-  // 날짜순으로 정렬
   return uniqueRecords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
@@ -83,7 +94,7 @@ export default function PatientPastRecords({ patientName, currentRecordId }: Pat
       }
 
       // 중복 기록 제거 (같은 날짜/시간대의 유사한 기록들)
-      const uniqueRecords = records ? removeDuplicateRecords(records) : [];
+      const uniqueRecords = records ? getRecordsWithSameNameAndAge(records, patientName) : [];
       setPastRecords(uniqueRecords);
       console.log('과거 기록 개수:', uniqueRecords.length);
       console.log('기록 ID들:', uniqueRecords.map(r => r.id));
